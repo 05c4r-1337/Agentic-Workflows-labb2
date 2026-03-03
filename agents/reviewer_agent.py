@@ -10,19 +10,36 @@ from memory.session_memory import DocEntry
 from tools.ollama_tools import call_ollama
 from config import APPROVAL_THRESHOLD, MAX_RETRIES
 
-SYSTEM_PROMPT = """You are a strict technical documentation reviewer.
-Evaluate Python documentation on a scale from 1 to 10.
-Criteria: clarity, completeness, correct parameter descriptions, return values, example quality.
-Always respond in this exact format:
-SCORE: <number>
-FEEDBACK: <one or two sentences of specific feedback>"""
+_LANGUAGE_LABELS = {
+    "python": "Python",
+    "csharp": "C#",
+}
+
+_CODE_FENCES = {
+    "python": "python",
+    "csharp": "csharp",
+}
 
 
-def build_review_prompt(entry: DocEntry) -> str:
-    return f"""Review this documentation for the Python {entry.element_type} `{entry.name}`.
+def _build_system_prompt(language: str) -> str:
+    label = _LANGUAGE_LABELS.get(language, language)
+    return (
+        f"You are a strict technical documentation reviewer.\n"
+        f"Evaluate {label} documentation on a scale from 1 to 10.\n"
+        "Criteria: clarity, completeness, correct parameter descriptions, return values, example quality.\n"
+        "Always respond in this exact format:\n"
+        "SCORE: <number>\n"
+        "FEEDBACK: <one or two sentences of specific feedback>"
+    )
+
+
+def build_review_prompt(entry: DocEntry, language: str = "python") -> str:
+    label = _LANGUAGE_LABELS.get(language, language)
+    fence = _CODE_FENCES.get(language, "")
+    return f"""Review this documentation for the {label} {entry.element_type} `{entry.name}`.
 
 Original code:
-```python
+```{fence}
 {entry.source_code}
 ```
 
@@ -50,8 +67,9 @@ class ReviewerAgent(BaseAgent):
     def review(self, entry: DocEntry) -> bool:
         """Review a single entry. Returns True if approved."""
         self.log(f"Reviewing '{entry.name}'...")
-        prompt = build_review_prompt(entry)
-        response = call_ollama(prompt, system=SYSTEM_PROMPT)
+        language = self.memory.language
+        prompt = build_review_prompt(entry, language)
+        response = call_ollama(prompt, system=_build_system_prompt(language))
 
         score, feedback = parse_review(response)
         entry.review_score = score

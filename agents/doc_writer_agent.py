@@ -26,7 +26,7 @@ def _build_system_prompt(language: str) -> str:
         f"You are a technical documentation writer specializing in {label} code.\n"
         "Your task is to write clear, concise Markdown documentation for the given code element.\n"
         "Always include: purpose, parameters (if any), return value (if any), and a usage example.\n"
-        "Write in English. Output only the documentation, no preamble. The abstraction level should be {ABSTRACTION}/10 with 10 being the highest abstraction"
+        f"Write in English. Output only the documentation, no preamble. The abstraction level should be {ABSTRACTION}/10 with 10 being the highest abstraction"
     )
 
 
