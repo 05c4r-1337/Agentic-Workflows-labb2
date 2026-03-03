@@ -10,7 +10,7 @@ MODEL = "codellama"
 MAX_RETRIES = 3
 
 # Minimum review score (1-10) required to approve a doc entry
-APPROVAL_THRESHOLD = 7
+APPROVAL_THRESHOLD = 9
 
 # Maximum write/review cycles before the orchestrator force-approves remaining entries
 MAX_CYCLES = 10
