@@ -16,8 +16,7 @@ from agents.analyzer_agent import AnalyzerAgent
 from agents.doc_writer_agent import DocWriterAgent
 from agents.reviewer_agent import ReviewerAgent
 from agents.output_agent import OutputAgent
-
-MAX_CYCLES = 10
+from config import MAX_RETRIES, MAX_CYCLES
 
 
 class Orchestrator:
@@ -72,7 +71,7 @@ class Orchestrator:
                 self.memory.log("Orchestrator", "All elements approved!")
                 break
 
-            if all(e.retry_count >= 3 for e in pending):
+            if all(e.retry_count >= MAX_RETRIES for e in pending):
                 self.memory.log(
                     "Orchestrator",
                     "Remaining elements hit max retries. Forcing approval.",

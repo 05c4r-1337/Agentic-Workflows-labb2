@@ -8,6 +8,7 @@ import re
 from agents.base_agent import BaseAgent
 from memory.session_memory import DocEntry
 from tools.ollama_tools import call_ollama
+from config import APPROVAL_THRESHOLD, MAX_RETRIES
 
 SYSTEM_PROMPT = """You are a strict technical documentation reviewer.
 Evaluate Python documentation on a scale from 1 to 10.
@@ -15,9 +16,6 @@ Criteria: clarity, completeness, correct parameter descriptions, return values, 
 Always respond in this exact format:
 SCORE: <number>
 FEEDBACK: <one or two sentences of specific feedback>"""
-
-APPROVAL_THRESHOLD = 7
-MAX_RETRIES = 3
 
 
 def build_review_prompt(entry: DocEntry) -> str:
