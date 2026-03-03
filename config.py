@@ -3,6 +3,9 @@ Central configuration for the multi-agent documentation workflow.
 All tunable constants live here so they stay in sync across agents.
 """
 
+# Ollama model to use for all agents
+MODEL = "codellama:13b"
+
 # Maximum number of revision attempts before a doc entry is force-approved
 MAX_RETRIES = 3
 

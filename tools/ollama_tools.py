@@ -4,10 +4,9 @@ Calls the local Ollama server at localhost:11434.
 """
 
 import requests
-import json
+from config import MODEL
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL = "codellama"
 
 
 def call_ollama(prompt: str, system: str = "") -> str:
