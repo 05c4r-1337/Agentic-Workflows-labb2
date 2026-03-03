@@ -18,11 +18,18 @@ from agents.reviewer_agent import ReviewerAgent
 from agents.output_agent import OutputAgent
 from config import MAX_RETRIES, MAX_CYCLES
 
+_EXTENSION_TO_LANGUAGE = {
+    ".py": "python",
+    ".cs": "csharp",
+}
+
 
 class Orchestrator:
     def __init__(self, target_file: str, output_dir: str = "."):
+        language = _EXTENSION_TO_LANGUAGE.get(Path(target_file).suffix.lower(), "python")
         self.memory = SessionMemory(
             target_file=target_file,
+            language=language,
             output_path=str(
                 Path(output_dir) / (Path(target_file).stem + "_docs.md")
             ),

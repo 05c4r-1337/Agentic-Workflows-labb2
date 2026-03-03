@@ -25,6 +25,7 @@ class DocEntry:
 class SessionMemory:
     target_file: str = ""
     source_code: str = ""
+    language: str = "python"
     doc_entries: list[DocEntry] = field(default_factory=list)
     plan: list[str] = field(default_factory=list)
     agent_log: list[str] = field(default_factory=list)
