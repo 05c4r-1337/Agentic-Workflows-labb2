@@ -70,16 +70,6 @@ def parse_code(source: str) -> list[DocEntry]:
     tree = ast.parse(source)
     entries: list[DocEntry] = []
 
-    # Module-level docstring
-    module_doc = ast.get_docstring(tree)
-    module_source_lines = source.splitlines()
-    entries.append(DocEntry(
-        element_type="module",
-        name="module",
-        signature="(module level)",
-        source_code="\n".join(module_source_lines[:min(20, len(module_source_lines))]),
-    ))
-
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
             class_source = extract_source(source, node)

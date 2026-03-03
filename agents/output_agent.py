@@ -17,9 +17,8 @@ HEADER_TEMPLATE = """# Documentation: `{filename}`
 
 """
 
-SECTION_ORDER = ["module", "class", "method", "function"]
+SECTION_ORDER = ["class", "method", "function"]
 SECTION_TITLES = {
-    "module": "Module Overview",
     "class": "Classes",
     "method": "Methods",
     "function": "Functions",
@@ -59,6 +58,9 @@ class OutputAgent(BaseAgent):
             sections[kind].append(block)
 
         content = HEADER_TEMPLATE.format(filename=filename, timestamp=timestamp, model=MODEL)
+        summary = getattr(self.memory, "file_summary", None)
+        if summary:
+            content += f"## Summary\n\n{summary.strip()}\n\n---\n\n"
 
         for kind in SECTION_ORDER:
             if sections[kind]:

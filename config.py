@@ -4,7 +4,7 @@ All tunable constants live here so they stay in sync across agents.
 """
 
 # Ollama model to use for all agents
-MODEL = "codellama:13b"
+MODEL = "codellama"
 
 # Maximum number of revision attempts before a doc entry is force-approved
 MAX_RETRIES = 3
@@ -14,3 +14,6 @@ APPROVAL_THRESHOLD = 7
 
 # Maximum write/review cycles before the orchestrator force-approves remaining entries
 MAX_CYCLES = 10
+
+# Abstraction level of the generated document
+ABSTRACTION = 10

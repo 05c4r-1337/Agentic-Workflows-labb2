@@ -16,6 +16,8 @@ from agents.analyzer_agent import AnalyzerAgent
 from agents.doc_writer_agent import DocWriterAgent
 from agents.reviewer_agent import ReviewerAgent
 from agents.output_agent import OutputAgent
+from agents.summary_agent import SummaryWriterAgent
+
 from config import MAX_RETRIES, MAX_CYCLES
 
 _EXTENSION_TO_LANGUAGE = {
@@ -94,7 +96,11 @@ class Orchestrator:
             for e in self.memory.get_pending():
                 e.approved = True
 
-        # Step 5: Output
+        # Step 5: Summary
+        summary_writer = SummaryWriterAgent(self.memory)
+        summary_writer.run()
+
+        # Step 6: Output
         output_agent = OutputAgent(self.memory)
         output_agent.run()
 
