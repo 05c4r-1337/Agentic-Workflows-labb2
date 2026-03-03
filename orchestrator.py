@@ -17,6 +17,8 @@ from agents.doc_writer_agent import DocWriterAgent
 from agents.reviewer_agent import ReviewerAgent
 from agents.output_agent import OutputAgent
 
+MAX_CYCLES = 10
+
 
 class Orchestrator:
     def __init__(self, target_file: str, output_dir: str = "."):
@@ -53,9 +55,9 @@ class Orchestrator:
         reviewer = ReviewerAgent(self.memory)
 
         iteration = 0
-        while True:
+        while iteration < MAX_CYCLES:
             iteration += 1
-            self.memory.log("Orchestrator", f"--- Write/Review cycle #{iteration} ---")
+            self.memory.log("Orchestrator", f"--- Write/Review cycle #{iteration}/{MAX_CYCLES} ---")
 
             doc_writer.run()
             rejected = reviewer.run()
@@ -78,6 +80,13 @@ class Orchestrator:
                 for e in pending:
                     e.approved = True
                 break
+        else:
+            self.memory.log(
+                "Orchestrator",
+                f"Reached max cycle limit ({MAX_CYCLES}). Forcing approval of remaining elements.",
+            )
+            for e in self.memory.get_pending():
+                e.approved = True
 
         # Step 5: Output
         output_agent = OutputAgent(self.memory)
