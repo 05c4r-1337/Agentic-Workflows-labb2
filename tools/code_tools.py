@@ -70,6 +70,12 @@ def parse_code(source: str) -> list[DocEntry]:
     tree = ast.parse(source)
     entries: list[DocEntry] = []
 
+    parent_map = {
+        id(child): parent
+        for parent in ast.walk(tree)
+        for child in ast.iter_child_nodes(parent)
+    }
+
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
             class_source = extract_source(source, node)
@@ -94,11 +100,7 @@ def parse_code(source: str) -> list[DocEntry]:
 
         elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             # Only top-level functions (not methods)
-            parent_is_class = any(
-                isinstance(p, ast.ClassDef) and node in ast.walk(p)
-                for p in ast.walk(tree)
-                if p is not node
-            )
+            parent_is_class = isinstance(parent_map.get(id(node)), ast.ClassDef)
             if not parent_is_class:
                 func_source = extract_source(source, node)
                 sig = get_function_signature(node)
