@@ -1,0 +1,21 @@
+# Output
+docs/
+sample_code/
+
+# Virtual environment
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build / dist
+build/
+dist/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
