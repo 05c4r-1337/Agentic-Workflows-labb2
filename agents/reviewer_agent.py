@@ -77,7 +77,7 @@ class ReviewerAgent(BaseAgent):
 
         if score >= APPROVAL_THRESHOLD:
             entry.approved = True
-            self.log(f"  APPROVED (score: {score}/10 - {feedback})")
+            self.log(f"  APPROVED (score: {score}/10)")
             return True
         else:
             self.log(f"  REJECTED (score: {score}/10) — {feedback}")

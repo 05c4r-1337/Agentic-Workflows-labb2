@@ -17,6 +17,7 @@ from agents.doc_writer_agent import DocWriterAgent
 from agents.reviewer_agent import ReviewerAgent
 from agents.output_agent import OutputAgent
 from agents.summary_agent import SummaryWriterAgent
+from agents.fact_checker_agent import FactCheckerAgent
 
 from config import MAX_RETRIES, MAX_CYCLES
 
@@ -61,6 +62,7 @@ class Orchestrator:
         # Steps 3-4: Write → Review loop
         doc_writer = DocWriterAgent(self.memory)
         reviewer = ReviewerAgent(self.memory)
+        fact_checker = FactCheckerAgent(self.memory)
 
         iteration = 0
         while iteration < MAX_CYCLES:
@@ -69,11 +71,13 @@ class Orchestrator:
 
             doc_writer.run()
             rejected = reviewer.run()
+            fact_rejected = fact_checker.run()
 
             pending = self.memory.get_pending()
             self.memory.log(
                 "Orchestrator",
-                f"Cycle complete. {self.memory.summary()} | {len(rejected)} sent for revision.",
+                f"Cycle complete. {self.memory.summary()} | {len(rejected)} quality rejections, "
+                f"{len(fact_rejected)} fact-check rejections.",
             )
 
             if not pending:
@@ -96,11 +100,11 @@ class Orchestrator:
             for e in self.memory.get_pending():
                 e.approved = True
 
-        # Step 5: Summary
+        # Step 6: Summary
         summary_writer = SummaryWriterAgent(self.memory)
         summary_writer.run()
 
-        # Step 6: Output
+        # Step 7: Output
         output_agent = OutputAgent(self.memory)
         output_agent.run()
 

@@ -53,7 +53,7 @@ class OutputAgent(BaseAgent):
 
             block = f"## `{entry.name}`{score_note}\n\n"
             block += f"**Signature:** `{entry.signature}`\n\n"
-            block += entry.documentation.strip()
+            block += (entry.documentation or "*(No documentation generated.)*").strip()
             block += "\n\n---\n"
             sections[kind].append(block)
 
