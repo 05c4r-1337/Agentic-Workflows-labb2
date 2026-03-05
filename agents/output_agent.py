@@ -47,11 +47,7 @@ class OutputAgent(BaseAgent):
             if kind not in sections:
                 kind = "function"
 
-            score_note = ""
-            if entry.review_score is not None:
-                score_note = f" *(review score: {entry.review_score}/10)*"
-
-            block = f"## `{entry.name}`{score_note}\n\n"
+            block = f"## `{entry.name}`\n\n"
             block += f"**Signature:** `{entry.signature}`\n\n"
             block += (entry.documentation or "*(No documentation generated.)*").strip()
             block += "\n\n---\n"
@@ -69,9 +65,9 @@ class OutputAgent(BaseAgent):
                 content += "\n"
 
         # Agent log appendix
-        content += "\n\n# Agent Log\n\n```\n"
-        content += "\n".join(self.memory.agent_log)
-        content += "\n```\n"
+        #content += "\n\n# Agent Log\n\n```\n"
+        #content += "\n".join(self.memory.agent_log)
+        #content += "\n```\n"
 
         output_path = self.memory.output_path
         write_markdown(content, output_path)

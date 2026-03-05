@@ -18,16 +18,16 @@ _CODE_FENCES = {
     "python": "python",
     "csharp": "csharp",
 }
-
+basePromt = ("Your task is to write clear, concise Markdown documentation for the given code element.\n"
+        "Always include: purpose, parameters (if any), return value (if any), and a usage example. Skip the first\n"
+        f"Write in English. Output only the documentation, no preamble. The abstraction level should be {ABSTRACTION}/10 with 10 being the highest abstraction"
+    )
 
 def _build_system_prompt(language: str) -> str:
     label = _LANGUAGE_LABELS.get(language, language)
     return (
-        f"You are a technical documentation writer specializing in {label} code.\n"
-        "Your task is to write clear, concise Markdown documentation for the given code element.\n"
-        "Always include: purpose, parameters (if any), return value (if any), and a usage example.\n"
-        f"Write in English. Output only the documentation, no preamble. The abstraction level should be {ABSTRACTION}/10 with 10 being the highest abstraction"
-    )
+        f"You are a technical documentation writer specializing in {label} code.\n"+
+        basePromt)
 
 
 def _build_prompt(entry: DocEntry, language: str, feedback: str = "") -> str:
@@ -39,11 +39,11 @@ def _build_prompt(entry: DocEntry, language: str, feedback: str = "") -> str:
         revision_note = f"""
 A reviewer rated your previous documentation and gave this feedback:
 \"\"\"{feedback}\"\"\"
-Please revise the documentation to address the feedback.
+Please revise the documentation to address the feedback. You may not have any preamble or notes after, just the revised documentation.
 """
 
-    return f"""Write Markdown documentation for the following {label} {entry.element_type}.
-
+    return f"""You are a technical documentation writer specializing in {label} code.\n"
+{basePromt}
 Signature: `{entry.signature}`
 
 Source code:
