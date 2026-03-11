@@ -4,7 +4,7 @@ All tunable constants live here so they stay in sync across agents.
 """
 
 # Ollama model to use for all agents
-MODEL = "codellama"
+MODEL = "llama3.1:8b"
 
 # Maximum number of revision attempts before a doc entry is force-approved
 MAX_RETRIES = 3
