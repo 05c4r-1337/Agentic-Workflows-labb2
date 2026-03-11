@@ -45,15 +45,6 @@ class PythonParser(BaseParser):
             for child in ast.iter_child_nodes(parent)
         }
 
-        # Module entry
-        module_source_lines = source.splitlines()
-        entries.append(DocEntry(
-            element_type="module",
-            name="module",
-            signature="(module level)",
-            source_code="\n".join(module_source_lines[:min(20, len(module_source_lines))]),
-        ))
-
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
                 entries.append(DocEntry(
