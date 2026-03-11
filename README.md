@@ -9,6 +9,18 @@ pip install requests
 python main.py sample_code/example.py docs/
 ```
 
+För baseline-jämförelse (ett pass utan review-loop eller faktakontroll):
+
+```bash
+python main.py sample_code/example.py docs/ --baseline
+```
+
+För att jämföra resultaten:
+
+```bash
+python compare.py docs/example_baseline_eval.json docs/example_eval.json
+```
+
 Kräver att [Ollama](https://ollama.com) körs lokalt på port 11434 med modellen `llama3.1:8b`:
 
 ```bash

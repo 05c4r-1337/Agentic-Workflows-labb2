@@ -19,6 +19,7 @@ class DocEntry:
     review_feedback: Optional[str] = None
     retry_count: int = 0
     approved: bool = False
+    force_approved: bool = False
     fact_check_issues: Optional[str] = None
     fact_check_retries: int = 0
 

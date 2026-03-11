@@ -83,13 +83,19 @@ class ReviewerAgent(BaseAgent):
             self.log(f"  REJECTED (score: {score}/10) — {feedback}")
             return False
 
-    def run(self) -> list[DocEntry]:
-        """Review all pending entries. Returns list of rejected entries."""
+    def run(self, score_only: bool = False) -> list[DocEntry]:
+        """Review all pending entries. Returns list of rejected entries.
+
+        score_only: if True, record scores but approve all entries regardless
+        of score (used in baseline mode).
+        """
         rejected = []
         for entry in self.memory.doc_entries:
             if not entry.approved and entry.documentation:
                 approved = self.review(entry)
-                if not approved:
+                if score_only:
+                    entry.approved = True
+                elif not approved:
                     if entry.retry_count >= MAX_RETRIES:
                         self.log(
                             f"  Max retries ({MAX_RETRIES}) reached for '{entry.name}'. "
