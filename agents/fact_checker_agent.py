@@ -22,7 +22,7 @@ SYSTEM_PROMPT = (
     "Only flag: parameter names that are definitively wrong, methods or classes that do not exist "
     "in the source code, or return types that are explicitly contradicted by the code. "
     "When in doubt, respond with ISSUES: None.\n"
-    "Respond in this exact format:\n"
+    "RESPOND IN THIS EXACT FORMAT:\n"
     "ISSUES: <bullet list of definite false claims, or 'None'>"
 )
 
@@ -60,7 +60,7 @@ class FactCheckerAgent(BaseAgent):
         language = self.memory.language
         prompt = _build_prompt(entry, language)
         response = call_ollama(prompt, system=SYSTEM_PROMPT, model=FACT_CHECKER_MODEL,
-                               options={"num_predict": 1024})
+                               options={"num_predict": 2048, "num_ctx": 2048})
 
         issues = _parse_issues(response)
 
@@ -78,12 +78,12 @@ class FactCheckerAgent(BaseAgent):
         return True
 
     def run(self) -> list[DocEntry]:
-        """Fact-check all approved entries. Returns list of entries sent back for rewrite."""
+        """Fact-check all approved entries that haven't been checked yet. Returns list of entries sent back for rewrite."""
         approved = self.memory.get_approved()
-        self.log(f"Fact-checking {len(approved)} approved entries...")
+        pending = [e for e in approved if e.fact_check_issues != "None" and e.documentation]
+        self.log(f"Fact-checking {len(pending)} approved entries...")
         rejected = []
-        for entry in approved:
-            if entry.documentation:
-                if self.check(entry):
-                    rejected.append(entry)
+        for entry in pending:
+            if self.check(entry):
+                rejected.append(entry)
         return rejected

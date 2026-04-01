@@ -9,7 +9,7 @@ MODEL = "gemma3:12b"
 # Per-agent model overrides (set to None to use the default MODEL)
 DOC_WRITER_MODEL = "gemma3:12b"
 REVIEWER_MODEL = "llama3.1:8b"
-FACT_CHECKER_MODEL = "qwen3.5:latest"
+FACT_CHECKER_MODEL = "qwen2.5-coder:7b"
 SUMMARY_MODEL = "gemma3:12b"
 
 # Maximum number of revision attempts before a doc entry is force-approved
