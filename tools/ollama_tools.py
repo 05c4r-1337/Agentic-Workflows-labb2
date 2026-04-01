@@ -9,10 +9,10 @@ from config import MODEL
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
 
-def call_ollama(prompt: str, system: str = "") -> str:
+def call_ollama(prompt: str, system: str = "", model: str = None) -> str:
     """Send a prompt to Ollama and return the response text."""
     payload = {
-        "model": MODEL,
+        "model": model or MODEL,
         "prompt": prompt,
         "stream": False,
     }

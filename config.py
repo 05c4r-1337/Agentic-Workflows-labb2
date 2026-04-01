@@ -3,8 +3,14 @@ Central configuration for the multi-agent documentation workflow.
 All tunable constants live here so they stay in sync across agents.
 """
 
-# Ollama model to use for all agents
+# Default Ollama model (used as fallback if no per-agent model is set)
 MODEL = "llama3.1:8b"
+
+# Per-agent model overrides (set to None to use the default MODEL)
+DOC_WRITER_MODEL = None
+REVIEWER_MODEL = None
+FACT_CHECKER_MODEL = None
+SUMMARY_MODEL = None
 
 # Maximum number of revision attempts before a doc entry is force-approved
 MAX_RETRIES = 3

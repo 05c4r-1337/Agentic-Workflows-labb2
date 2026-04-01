@@ -4,6 +4,7 @@ Summarywriter Agent — generates a summary for the document.
 
 from agents.base_agent import BaseAgent
 from tools.ollama_tools import call_ollama
+from config import SUMMARY_MODEL
 
 _LANGUAGE_LABELS = {"python": "Python", "csharp": "C#"}
 
@@ -29,6 +30,6 @@ It contains these elements:
 
 Write a short high-level summary of what this file does."""
 
-        summary = call_ollama(prompt, system=SUMMARY_SYSTEM_PROMPT)
+        summary = call_ollama(prompt, system=SUMMARY_SYSTEM_PROMPT, model=SUMMARY_MODEL)
         self.memory.file_summary = summary
         self.log(f"  Done. ({len(summary)} chars)")

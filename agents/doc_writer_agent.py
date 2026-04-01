@@ -7,7 +7,7 @@ Language-aware: uses the language stored in session memory for prompts.
 from agents.base_agent import BaseAgent
 from memory.session_memory import DocEntry
 from tools.ollama_tools import call_ollama
-from config import ABSTRACTION
+from config import ABSTRACTION, DOC_WRITER_MODEL
 
 _LANGUAGE_LABELS = {
     "python": "Python",
@@ -68,7 +68,7 @@ class DocWriterAgent(BaseAgent):
         language = self.memory.language
         prompt = _build_prompt(entry, language, feedback)
         system = _build_system_prompt(language)
-        documentation = call_ollama(prompt, system=system)
+        documentation = call_ollama(prompt, system=system, model=DOC_WRITER_MODEL)
         entry.documentation = documentation
         self.log(f"  Done. ({len(documentation)} chars)")
 
