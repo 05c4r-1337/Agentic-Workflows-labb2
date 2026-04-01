@@ -4,7 +4,7 @@ All tunable constants live here so they stay in sync across agents.
 """
 
 # Default Ollama model (used as fallback if no per-agent model is set)
-MODEL = "llama3.1:8b"
+MODEL = "gemma3:12b"
 
 # Per-agent model overrides (set to None to use the default MODEL)
 DOC_WRITER_MODEL = None
