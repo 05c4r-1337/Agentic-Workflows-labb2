@@ -59,7 +59,8 @@ class FactCheckerAgent(BaseAgent):
         self.log(f"Checking '{entry.name}'...")
         language = self.memory.language
         prompt = _build_prompt(entry, language)
-        response = call_ollama(prompt, system=SYSTEM_PROMPT, model=FACT_CHECKER_MODEL)
+        response = call_ollama(prompt, system=SYSTEM_PROMPT, model=FACT_CHECKER_MODEL,
+                               options={"num_predict": 1024})
 
         issues = _parse_issues(response)
 
