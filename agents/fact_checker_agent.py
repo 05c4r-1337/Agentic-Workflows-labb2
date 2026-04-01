@@ -66,6 +66,7 @@ class FactCheckerAgent(BaseAgent):
 
         if issues.lower() == "none":
             self.log(f"  No issues found.")
+            entry.fact_check_issues = "None"
             return False
 
         entry.fact_check_issues = issues
