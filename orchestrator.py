@@ -17,6 +17,7 @@ Flow (baseline mode):
 """
 
 import time
+from datetime import datetime
 from pathlib import Path
 from memory.session_memory import SessionMemory
 from agents.analyzer_agent import AnalyzerAgent
@@ -40,7 +41,8 @@ class Orchestrator:
         self.baseline = baseline
         language = _EXTENSION_TO_LANGUAGE.get(Path(target_file).suffix.lower(), "python")
         stem = Path(target_file).stem
-        suffix = "_baseline_docs.md" if baseline else "_docs.md"
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        suffix = f"_baseline_docs_{ts}.md" if baseline else f"_docs_{ts}.md"
         self.memory = SessionMemory(
             target_file=target_file,
             language=language,
@@ -142,7 +144,8 @@ class Orchestrator:
         # Evaluation report
         report = compute_report(self.memory, mode, cycles_used, runtime)
         stem = Path(self.memory.target_file).stem
-        suffix = "_baseline_eval.json" if self.baseline else "_eval.json"
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        suffix = f"_baseline_eval_{ts}.json" if self.baseline else f"_eval_{ts}.json"
         eval_path = str(Path(self._output_dir) / (stem + suffix))
         save_report(report, eval_path)
 
