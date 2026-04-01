@@ -24,29 +24,30 @@ _CODE_FENCES = {
 def _build_system_prompt(language: str) -> str:
     label = _LANGUAGE_LABELS.get(language, language)
     return (
-        f"You are a strict technical documentation reviewer.\n"
-        f"Evaluate {label} documentation on a scale from 1 to 10.\n"
-        "Criteria: clarity, completeness, correct parameter descriptions, return values, example quality.\n"
-        "Always respond in this exact format:\n"
-        "SCORE: <number>\n"
-        "FEEDBACK: <one or two sentences of specific feedback>"
+        f"You are a technical documentation quality reviewer for {label} code.\n"
+        "Your job is to evaluate how well the documentation is written — not whether its facts are correct.\n"
+        "Assume all technical details in the documentation are accurate. Do not verify them against the source code.\n\n"
+        "Score the documentation from 1 to 10 using these anchors:\n"
+        "  9-10 — Exceptionally clear and complete. Purpose, parameters, return value, and behaviour are all described in a way any developer could understand without reading the source.\n"
+        "  7-8  — Mostly clear with minor gaps (e.g. a parameter's purpose is vague, or an important edge case is unmentioned).\n"
+        "  5-6  — Partially useful but a reader would still need to read the source code to understand how to use it.\n"
+        "  3-4  — Hard to follow or missing critical sections such as parameters or return value entirely.\n"
+        "  1-2  — Essentially useless: empty, incomprehensible, or a single throwaway sentence.\n\n"
+        "When writing feedback, name the exact section or parameter description that needs improving and explain why it is unclear or incomplete. "
+        "Do not comment on factual correctness, code style, or formatting.\n\n"
+        "Respond in this exact format:\n"
+        "SCORE: <number 1-10>\n"
+        "FEEDBACK: <specific feedback on clarity and completeness, or 'None' if score is 9 or above>"
     )
-
 
 def build_review_prompt(entry: DocEntry, language: str = "python") -> str:
     label = _LANGUAGE_LABELS.get(language, language)
     fence = _CODE_FENCES.get(language, "")
-    return f"""Review this documentation for the {label} {entry.element_type} `{entry.name}`.
-
-Original code:
-```{fence}
-{entry.source_code}
-```
-
-Generated documentation:
-{entry.documentation}
-
-Evaluate and respond with SCORE and FEEDBACK:"""
+    return (
+        f"Review the documentation for this {label} {entry.element_type} `{entry.name}`.\n\n"
+        f"Source code:\n```{fence}\n{entry.source_code}\n```\n\n"
+        f"Generated documentation:\n{entry.documentation}"
+    )
 
 
 def parse_review(response: str) -> tuple[int, str]:
