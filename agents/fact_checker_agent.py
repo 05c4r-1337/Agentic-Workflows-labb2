@@ -15,11 +15,12 @@ _CODE_FENCES = {"python": "python", "csharp": "csharp"}
 
 SYSTEM_PROMPT = (
     "You are a strict code documentation fact-checker. "
+    "You will be given source code and a documentation string written about it. "
     "Only flag issues you are completely certain about by reading the source code literally. "
-    "Do NOT flag style issues, missing detail, or anything you are unsure about. "
+    "Do NOT flag style issues, missing detail, vague descriptions, or anything you are unsure about. "
     "Only flag: parameter names that are definitively wrong, methods or classes that do not exist "
-    "in the source code at all, or return types that are explicitly contradicted by the code. "
-    "When in doubt, respond with ISSUES: None. "
+    "in the source code, or return types that are explicitly contradicted by the code. "
+    "When in doubt, respond with ISSUES: None.\n"
     "Respond in this exact format:\n"
     "ISSUES: <bullet list of definite false claims, or 'None'>"
 )
@@ -32,7 +33,6 @@ def _build_prompt(entry: DocEntry, language: str) -> str:
         f"Fact-check this {label} documentation against the actual source code.\n\n"
         f"Source code:\n```{fence}\n{entry.source_code}\n```\n\n"
         f"Documentation to check:\n{entry.documentation}\n\n"
-        "List any factual errors and provide the corrected documentation."
     )
 
 
@@ -51,7 +51,7 @@ class FactCheckerAgent(BaseAgent):
 
     def check(self, entry: DocEntry) -> bool:
         """Check a single entry. Returns True if issues were found (entry sent back for rewrite)."""
-        if entry.fact_check_retries >= 1:
+        if entry.fact_check_retries >= 5:
             self.log(f"  Skipping '{entry.name}' (fact-check retry limit reached).")
             return False
 

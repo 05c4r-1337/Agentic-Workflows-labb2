@@ -14,44 +14,50 @@ _LANGUAGE_LABELS = {
     "csharp": "C#",
 }
 
+_ABSTRACTION_ANCHORS = (
+    f"Abstraction level: {ABSTRACTION}/10. "
+    "At level 1, describe every implementation detail and internal behaviour. "
+    "At level 5, describe what the code does and how to use it without explaining internals. "
+    "At level 10, describe only the purpose and usage in plain language a non-developer could follow."
+)
+
 _CODE_FENCES = {
     "python": "python",
     "csharp": "csharp",
 }
-basePromt = ("Your task is to write clear, concise Markdown documentation for the given code element.\n"
-        "Always include: purpose, parameters (if any), return value (if any), and a usage example. Skip the first\n"
-        f"Write in English. Output only the documentation, no preamble. The abstraction level should be {ABSTRACTION}/10 with 10 being the highest abstraction"
-    )
 
 def _build_system_prompt(language: str) -> str:
     label = _LANGUAGE_LABELS.get(language, language)
     return (
-        f"You are a technical documentation writer specializing in {label} code.\n"+
-        basePromt)
+        f"You are a technical documentation writer specialising in {label} code.\n"
+        "Your task is to write clear Markdown documentation for a single code element.\n\n"
+        "Always include:\n"
+        "  - Purpose: what this element does and when to use it\n"
+        "  - Parameters: name, type, and what each one controls (omit if none)\n"
+        "  - Return value: type and what it represents (omit if void/None)\n"
+        "  - Usage example: a minimal, realistic code snippet\n\n"
+        f"{_ABSTRACTION_ANCHORS}\n\n"
+        "Write in English. Output only the Markdown documentation. "
+        "Do not include any preamble, explanation, or closing remarks."
+    )
 
 
 def _build_prompt(entry: DocEntry, language: str, feedback: str = "") -> str:
-    label = _LANGUAGE_LABELS.get(language, language)
     fence = _CODE_FENCES.get(language, "")
 
-    revision_note = ""
+    revision_section = ""
     if feedback:
-        revision_note = f"""
-A reviewer rated your previous documentation and gave this feedback:
-\"\"\"{feedback}\"\"\"
-Please revise the documentation to address the feedback. You may not have any preamble or notes after, just the revised documentation.
-"""
+        revision_section = (
+            "\n\nYour previous attempt was reviewed and returned with this feedback:\n"
+            f'"""{feedback}"""\n'
+            "Rewrite the documentation to fully address the feedback above."
+        )
 
-    return f"""You are a technical documentation writer specializing in {label} code.\n"
-{basePromt}
-Signature: `{entry.signature}`
-
-Source code:
-```{fence}
-{entry.source_code}
-```
-{revision_note}
-Documentation:"""
+    return (
+        f"Signature: `{entry.signature}`\n\n"
+        f"Source code:\n```{fence}\n{entry.source_code}\n```"
+        f"{revision_section}"
+    )
 
 
 class DocWriterAgent(BaseAgent):
