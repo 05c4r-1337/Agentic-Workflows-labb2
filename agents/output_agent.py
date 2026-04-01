@@ -6,7 +6,7 @@ Markdown file, organized by element type.
 from pathlib import Path
 from agents.base_agent import BaseAgent
 from tools.code_tools import write_markdown
-from config import MODEL
+from config import MODEL, DOC_WRITER_MODEL, REVIEWER_MODEL, FACT_CHECKER_MODEL, SUMMARY_MODEL
 
 HEADER_TEMPLATE = """# Documentation: `{filename}`
 
@@ -53,7 +53,8 @@ class OutputAgent(BaseAgent):
             block += "\n\n---\n"
             sections[kind].append(block)
 
-        content = HEADER_TEMPLATE.format(filename=filename, timestamp=timestamp, model=MODEL)
+        model_display = DOC_WRITER_MODEL or MODEL
+        content = HEADER_TEMPLATE.format(filename=filename, timestamp=timestamp, model=model_display)
         summary = getattr(self.memory, "file_summary", None)
         if summary:
             content += f"## Summary\n\n{summary.strip()}\n\n---\n\n"
