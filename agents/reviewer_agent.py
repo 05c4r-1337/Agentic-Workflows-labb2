@@ -8,7 +8,7 @@ import re
 from agents.base_agent import BaseAgent
 from memory.session_memory import DocEntry
 from tools.ollama_tools import call_ollama
-from config import APPROVAL_THRESHOLD, MAX_RETRIES, REVIEWER_MODEL
+from config import APPROVAL_THRESHOLD, MAX_RETRIES, REVIEWER_MODEL, REVIEWER_TEMPERATURE
 
 _LANGUAGE_LABELS = {
     "python": "Python",
@@ -70,7 +70,8 @@ class ReviewerAgent(BaseAgent):
         self.log(f"Reviewing '{entry.name}'...")
         language = self.memory.language
         prompt = build_review_prompt(entry, language)
-        response = call_ollama(prompt, system=_build_system_prompt(language), model=REVIEWER_MODEL)
+        response = call_ollama(prompt, system=_build_system_prompt(language), model=REVIEWER_MODEL,
+                               options={"temperature": REVIEWER_TEMPERATURE})
 
         score, feedback = parse_review(response)
         entry.review_score = score

@@ -24,5 +24,11 @@ MAX_CYCLES = 10
 # Abstraction level of the generated document
 ABSTRACTION = 10
 
+# Per-agent temperature settings
+DOC_WRITER_TEMPERATURE = 0.6
+REVIEWER_TEMPERATURE = 0.1
+FACT_CHECKER_TEMPERATURE = 0.0
+SUMMARY_TEMPERATURE = 0.4
+
 # Ollama request timeout in seconds
 OLLAMA_TIMEOUT = 600
