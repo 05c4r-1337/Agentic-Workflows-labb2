@@ -13,7 +13,7 @@ FACT_CHECKER_MODEL = "qwen2.5-coder:7b"
 SUMMARY_MODEL = "gemma3:12b"
 
 # Maximum number of revision attempts before a doc entry is force-approved
-MAX_RETRIES = 3
+MAX_RETRIES = 6
 
 # Minimum review score (1-10) required to approve a doc entry
 APPROVAL_THRESHOLD = 7

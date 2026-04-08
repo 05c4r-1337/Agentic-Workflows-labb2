@@ -28,17 +28,25 @@ _CODE_FENCES = {
 
 def _build_system_prompt(language: str) -> str:
     label = _LANGUAGE_LABELS.get(language, language)
+    fence = _CODE_FENCES.get(language, language)
     return (
         f"You are a technical documentation writer specialising in {label} code.\n"
         "Your task is to write clear Markdown documentation for a single code element.\n\n"
-        "Always include:\n"
-        "  - Purpose: what this element does and when to use it\n"
-        "  - Parameters: name, type, and what each one controls (omit if none)\n"
-        "  - Return value: type and what it represents (omit if void/None)\n"
-        "  - Usage example: a minimal, realistic code snippet\n\n"
+        "OUTPUT RULES — follow these exactly:\n"
+        "  1. Output raw Markdown only. Do NOT wrap your output in a ```markdown fence or any other code fence.\n"
+        "  2. Do NOT start with a heading. The heading is added automatically — begin directly with the content.\n"
+        "  3. Use a Markdown pipe table for parameters (columns: Parameter, Type, Description). Omit if none.\n"
+        "  4. Use a Markdown pipe table for return value (columns: Type, Description). Omit if void/None.\n"
+        "  5. Include a minimal, realistic code example in a " + f"```{fence}``` " + "block only when it meaningfully illustrates usage. Skip it for trivial getters or constructors.\n"
+        "  6. No preamble, no closing remarks, no meta-commentary about the documentation.\n\n"
+        "CONTENT — include in this order (omit sections that don't apply):\n"
+        "  - One concise paragraph describing the purpose and when to use this element.\n"
+        "  - A 'Parameters' section with a pipe table (columns: Parameter, Type, Description). Include what each parameter controls, not just its type.\n"
+        "  - A 'Return value' section with a pipe table (columns: Field, Type, Description). If the return type is a complex object, document its fields too.\n"
+        "  - If the element has internal constants, templates, or configuration that meaningfully affect its public behaviour, describe that behaviour in a dedicated section.\n"
+        "  - An 'Example' section with a code block (when genuinely useful — skip for trivial getters or constructors).\n\n"
         f"{_ABSTRACTION_ANCHORS}\n\n"
-        "Write in English. Output only the Markdown documentation. "
-        "Do not include any preamble, explanation, or closing remarks."
+        "Write in English."
     )
 
 

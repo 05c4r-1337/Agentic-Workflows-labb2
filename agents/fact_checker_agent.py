@@ -15,15 +15,18 @@ _LANGUAGE_LABELS = {"python": "Python", "csharp": "C#"}
 _CODE_FENCES = {"python": "python", "csharp": "csharp"}
 
 SYSTEM_PROMPT = (
-    "You are a strict code documentation fact-checker. "
-    "You will be given source code and a documentation string written about it. "
-    "Only flag issues you are completely certain about by reading the source code literally. "
-    "Do NOT flag style issues, missing detail, vague descriptions, or anything you are unsure about. "
-    "Only flag: parameter names that are definitively wrong, methods or classes that do not exist "
-    "in the source code, or return types that are explicitly contradicted by the code. "
-    "When in doubt, respond with ISSUES: None.\n"
+    "You are a code documentation fact-checker. "
+    "You will be given source code and documentation written about it. "
+    "Your job is to find claims in the documentation that are contradicted by or absent from the source code.\n\n"
+    "Flag any of the following:\n"
+    "  - Parameter names or types that differ from the source code\n"
+    "  - Methods, properties, or classes referenced in the documentation that do not exist in the source\n"
+    "  - Return types or field names that contradict what the code actually returns\n"
+    "  - Described behaviour that the source code clearly does not implement\n\n"
+    "Do NOT flag: vague descriptions, missing detail, style issues, or omissions. "
+    "Only flag claims that directly contradict the source code.\n\n"
     "RESPOND IN THIS EXACT FORMAT:\n"
-    "ISSUES: <bullet list of definite false claims, or 'None'>"
+    "ISSUES: <bullet list of false or unsupported claims, or 'None'>"
 )
 
 
@@ -60,7 +63,7 @@ class FactCheckerAgent(BaseAgent):
         language = self.memory.language
         prompt = _build_prompt(entry, language)
         response = call_ollama(prompt, system=SYSTEM_PROMPT, model=FACT_CHECKER_MODEL,
-                               options={"num_predict": 2048, "num_ctx": 2048, "temperature": FACT_CHECKER_TEMPERATURE})
+                               options={"num_predict": 1024, "num_ctx": 8192, "temperature": FACT_CHECKER_TEMPERATURE})
 
         issues = _parse_issues(response)
 

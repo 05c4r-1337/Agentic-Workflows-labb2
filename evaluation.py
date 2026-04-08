@@ -69,7 +69,9 @@ def print_report(report: EvalReport) -> None:
     print(f"{'=' * w}")
     print(f"  File:                  {report.file}")
     print(f"  Total elements:        {report.total_elements}")
-    print(f"  Approved normally:     {report.approved_normally}/{report.total_elements} ({report.approval_rate:.0%})")
+    normal_rate = report.approved_normally / report.total_elements if report.total_elements else 0
+    print(f"  Approved normally:     {report.approved_normally}/{report.total_elements} ({normal_rate:.0%})")
+    print(f"  Total approval rate:   {report.approval_rate:.0%} (incl. force-approved)")
     print(f"  Force-approved:        {report.force_approved}")
     print(f"  Avg review score:      {report.avg_score}/10")
     print(f"  Min / Max score:       {report.min_score} / {report.max_score}")
