@@ -17,7 +17,6 @@ import sys
 import argparse
 from pathlib import Path
 from orchestrator import Orchestrator
-from tools.parsers import SUPPORTED_EXTENSIONS
 
 
 def main():
@@ -36,9 +35,10 @@ def main():
     if not Path(args.target).exists():
         print(f"Error: File not found: {args.target}")
         sys.exit(1)
+    SUPPORTED_EXTENSIONS = {".py", ".cs"}
 
     ext = Path(args.target).suffix.lower()
-    if ext not in SUPPORTED_EXTENSIONS:
+    if ext not in (SUPPORTED_EXTENSIONS):
         print(f"Error: Unsupported file type '{ext}'. Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}")
         sys.exit(1)
 

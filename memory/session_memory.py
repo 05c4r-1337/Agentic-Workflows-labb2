@@ -9,44 +9,41 @@ from datetime import datetime
 
 
 @dataclass
-class DocEntry:
-    element_type: str          # 'module', 'class', 'function', 'method'
-    name: str
-    signature: str
-    source_code: str
-    documentation: Optional[str] = None
-    review_score: Optional[int] = None
-    review_feedback: Optional[str] = None
-    retry_count: int = 0
-    approved: bool = False
-    force_approved: bool = False
-    fact_check_issues: Optional[str] = None
-    fact_check_retries: int = 0
-
-
-@dataclass
 class SessionMemory:
+    # Input
     target_file: str = ""
     source_code: str = ""
     language: str = "python"
-    doc_entries: list[DocEntry] = field(default_factory=list)
-    plan: list[str] = field(default_factory=list)
+    output_path: str = ""
+
+    # Documentation state
+    file_documentation: Optional[str] = None
+    file_approved: bool = False
+    file_feedback: Optional[str] = None
+    file_review_score: Optional[int] = None
+    file_fact_check_issues: Optional[str] = None
+    fact_check_retries: int = 0
+
+    # Summary
+    file_summary: Optional[str] = None
+
+    # Internal
     agent_log: list[str] = field(default_factory=list)
     started_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    output_path: str = ""
 
     def log(self, agent: str, message: str):
         entry = f"[{agent}] {message}"
         self.agent_log.append(entry)
         print(entry)
 
-    def get_pending(self) -> list[DocEntry]:
-        return [e for e in self.doc_entries if not e.approved]
-
-    def get_approved(self) -> list[DocEntry]:
-        return [e for e in self.doc_entries if e.approved]
-
     def summary(self) -> str:
-        total = len(self.doc_entries)
-        approved = len(self.get_approved())
-        return f"{approved}/{total} elements documented and approved"
+        status = "approved" if self.file_approved else "pending"
+        score = f", score: {self.file_review_score}/10" if self.file_review_score else ""
+        retries = f", retries: {self.fact_check_retries}" if self.fact_check_retries else ""
+        return f"Documentation {status}{score}{retries}"
+
+    def reset_for_retry(self):
+        """Clear documentation state before a rewrite cycle."""
+        self.file_documentation = None
+        self.file_approved = False
+        self.file_review_score = None

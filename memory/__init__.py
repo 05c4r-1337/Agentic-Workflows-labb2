@@ -1,1 +1,1 @@
-from .session_memory import SessionMemory, DocEntry
+from .session_memory import SessionMemory

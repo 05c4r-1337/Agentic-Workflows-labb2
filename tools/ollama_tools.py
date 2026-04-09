@@ -24,7 +24,10 @@ def call_ollama(prompt: str, system: str = "", model: str = None, options: dict 
     try:
         response = requests.post(OLLAMA_URL, json=payload, timeout=OLLAMA_TIMEOUT)
         response.raise_for_status()
-        return response.json().get("response", "").strip()
+        data = response.json()
+        if not data.get("response", "").strip():
+            raise RuntimeError(f"Ollama returned empty response. Full body: {data}")
+        return data["response"].strip()
     except requests.exceptions.ConnectionError:
         raise RuntimeError(
             "Cannot connect to Ollama. Make sure Ollama is running: `ollama serve`"
