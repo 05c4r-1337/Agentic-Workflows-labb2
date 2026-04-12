@@ -10,13 +10,12 @@ MODEL = "gemma4:e4b"
 DOC_WRITER_MODEL = "gemma4:e4b"
 REVIEWER_MODEL = "gemma4:e4b"
 FACT_CHECKER_MODEL = "gemma4:e4b"
-SUMMARY_MODEL = "gemma4:e4b"
 
 # Maximum number of revision attempts before a doc entry is force-approved
 MAX_RETRIES = 6
 
 # Minimum review score (1-10) required to approve a doc entry
-APPROVAL_THRESHOLD = 7
+APPROVAL_THRESHOLD = 8
 
 # Maximum write/review cycles before the orchestrator force-approves remaining entries
 MAX_CYCLES = 10

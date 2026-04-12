@@ -43,15 +43,18 @@ def _build_system_prompt(language: str) -> str:
     )
 
 
-def _build_prompt(source_code: str, language: str, feedback: str = "") -> str:
+def _build_prompt(source_code: str, language: str, feedback: str = "", existing_doc: str = "") -> str:
     fence = _CODE_FENCES.get(language, "")
 
     revision_section = ""
     if feedback:
         revision_section = (
-            "\n\nYour previous attempt was reviewed and returned with this feedback:\n"
-            f'"""{feedback}"""\n'
-            "Rewrite the documentation to fully address the feedback above."
+            f"\n\nYour previous documentation was reviewed. This was the document"
+            f'"""{existing_doc}"""\n\n'
+            "Specific issues to fix:\n"
+            f'"""{feedback}"""\n\n'
+            "Rewrite the MARKDOWN DOCUMENTATION for the C# source file above to fix only these issues. "
+            "Do not change anything that is not mentioned. Do not write code, analysis, or commentary."
         )
 
     return (
@@ -65,10 +68,13 @@ class DocWriterAgent(BaseAgent):
         super().__init__("DocWriterAgent", memory)
 
     def run(self):
-        self.log("Writing documentation for full source file...")
         feedback = self.memory.file_feedback or ""
         language = self.memory.language
-        prompt = _build_prompt(self.memory.source_code, language, feedback)
+        if feedback:
+            self.log("Rewriting documentation with feedback:")
+        else:
+            self.log("Writing documentation")        
+        prompt = _build_prompt(self.memory.source_code, language, feedback, self.memory.file_documentation)
         system = _build_system_prompt(language)
         documentation = call_ollama(
             prompt, system=system,

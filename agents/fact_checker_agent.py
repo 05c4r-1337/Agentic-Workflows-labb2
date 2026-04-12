@@ -25,9 +25,9 @@ SYSTEM_PROMPT = (
     "  - Sorting or ordering logic that contradicts the actual implementation\n"
     "  - Algorithmic details (calculations, conditions, thresholds) that differ from the source\n"
     "  - Terminology swaps that change the meaning (e.g. 'relevance score' vs 'distance')\n\n"
-    "Be thorough — read every descriptive claim and verify it against the source code line by line."
-    "RESPOND IN THIS EXACT FORMAT:\n"
-    "ISSUES: <bullet list of false or unsupported claims>"
+    "Be thorough — read every descriptive claim and verify it against the source code line by line.\n"
+    "RESPOND IN THIS EXACT FORMAT!!!:\n"
+    "ISSUES: <bullet list of false or unsupported claims> or <No issues found>"
 )
 
 
@@ -42,6 +42,8 @@ def _build_prompt(source_code: str, documentation: str, language: str) -> str:
 
 def _parse_issues(response: str) -> str:
     """Returns the issues string, or 'None' if no problems found."""
+    if "no issues found" in response.lower():
+        return "none"
     if "ISSUES:" in response:
         parts = response.split("ISSUES:", 1)[1]
         issues = parts.split("CORRECTED:")[0].strip() if "CORRECTED:" in parts else parts.strip()
@@ -64,8 +66,6 @@ class FactCheckerAgent(BaseAgent):
         response = call_ollama(prompt, system=SYSTEM_PROMPT, model=FACT_CHECKER_MODEL,
                                options={"num_predict": 2048, "num_ctx": 16384,
                                         "temperature": FACT_CHECKER_TEMPERATURE})
-        self.log(f"Raw response: {response}")  # add this temporarily
-
         issues = _parse_issues(response)
         if issues.lower() == "none":
             self.log("No issues found.")
@@ -75,7 +75,7 @@ class FactCheckerAgent(BaseAgent):
         self.memory.file_fact_check_issues = issues
         self.memory.fact_check_retries = getattr(self.memory, 'fact_check_retries', 0) + 1
         self.memory.file_approved = False
-        self.memory.file_feedback = f"Fact-check issues: {issues}"
-        self.memory.file_documentation = None
+        existing = self.memory.file_feedback or ""
+        self.memory.file_feedback = f"{existing}\nFact-check issues:\n{issues}".strip()        
         self.log(f"Issues found, sent back for rewrite: {issues[:120]}...")
         return True

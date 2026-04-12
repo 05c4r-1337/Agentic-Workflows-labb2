@@ -7,7 +7,7 @@ the entry is sent back for revision by the DocWriter.
 import re
 from agents.base_agent import BaseAgent
 from tools.ollama_tools import call_ollama
-from config import APPROVAL_THRESHOLD, MAX_RETRIES, REVIEWER_MODEL, REVIEWER_TEMPERATURE
+from config import APPROVAL_THRESHOLD, REVIEWER_MODEL, REVIEWER_TEMPERATURE
 
 _LANGUAGE_LABELS = {
     "python": "Python",
@@ -24,28 +24,43 @@ def _build_system_prompt(language: str) -> str:
     label = _LANGUAGE_LABELS.get(language, language)
     return (
         f"You are a technical documentation quality reviewer for {label} code.\n"
-        "Your job is to evaluate how well the documentation is written — not whether its facts are correct.\n"
+        "Your job is to evaluate documentation clarity and completeness — NEVER FACTUAL CORRECTNESS.\n"
         "Assume all technical details in the documentation are accurate.\n\n"
-        "Score the documentation from 1 to 10 using these anchors:\n"
-        "  9-10 — Exceptionally clear and complete. Purpose, parameters, return value, and behaviour are all described in a way any developer could understand without reading the source.\n"
-        "  7-8  — Mostly clear with minor gaps (e.g. a parameter's purpose is vague, or an important edge case is unmentioned).\n"
-        "  5-6  — Partially useful but a reader would still need to read the source code to understand how to use it.\n"
-        "  3-4  — Hard to follow or missing critical sections such as parameters or return value entirely.\n"
-        "  1-2  — Essentially useless: empty, incomprehensible, or a single throwaway sentence.\n\n"
-        "When reviewing, do a regular check, and then check for these common omissions and penalise if missing:\n"
-        "  - Internal constants or templates that affect public behaviour (e.g. system prompts, prompt templates)\n"
-        "  - Default values for configuration (e.g. fallback model names, default thresholds)\n"
-        "  - Return type fields: if a method returns a complex object, its fields should be documented\n"
-        "  - Scoring or calculation logic that affects output (e.g. how relevance scores are computed)\n"
-        "  - The persona or behavioural constraints imposed by any system prompts\n\n"
-        "When writing feedback, name the exact section or parameter that needs improving and explain why. "
+
+        "STEP 1 — CHECKLIST\n"
+        "Go through each item below. Mark it PASS, FAIL, or N/A.\n"
+        "N/A is only valid if the code structurally cannot have that item "
+        "(e.g. a void method cannot have [C]; a method with no parameters cannot have [B]). "
+        "Marking N/A because the documentation simply omits the item is a FAIL, not N/A.\n\n"
+        "  [A] Purpose: FAIL if there is no clear statement of what the method or class does.\n"
+        "  [B] Parameters: FAIL if any parameter has no explanation, or is described only by its type or name with no behavioural meaning.\n"
+        "  [C] Return value: FAIL if a complex return type lists no fields, or a simple return type has no description of what it represents.\n"
+        "  [D] Edge cases / exceptions: FAIL if notable failure modes or boundary conditions exist in the code but are not mentioned.\n"
+        "  [E] Constants / templates: FAIL if internal constants or prompt templates that affect public behaviour are not documented.\n"
+        "  [F] Default values: FAIL if default or fallback values for configuration exist in the code but are not documented.\n"
+        "  [G] Scoring / calculation logic: FAIL if output depends on a formula or algorithm that is not explained.\n"
+        "  [H] System-prompt persona: FAIL if a system prompt is used but its behavioural constraints are not described.\n\n"
+
+        "STEP 2 — ANALYSIS\n"
+        "For every FAIL, write one sentence using this pattern:\n"
+        "  [Item X] — <what is absent> is not documented; a reader cannot determine <what they cannot do as a result>.\n"
+        "If there are no FAILs, write: No issues found.\n"
         "Do not comment on factual correctness, code style, or formatting.\n\n"
-        "Respond in this exact format:\n"
-        "SCORE: <number 1-10>\n"
-        "FEEDBACK: <specific feedback on clarity and completeness, or 'None' if score is 9 or above>"
+
+        "STEP 3 — SCORE\n"
+        "Count your FAIL results (ignore N/A). Critical items are A, B, C. All others are minor.\n"
+        "  0 FAIL  → 9 (or 10 if the documentation includes a concrete usage example)\n"
+        "  1 FAIL  → 7 if the failed item is critical; 8 if minor\n"
+        "  2 FAIL  → 5 if any critical item failed; 6 if both are minor\n"
+        "  3 FAIL  → 4\n"
+        "  4+ FAIL → 1\n\n"
+
+        "You MUST end your entire response with this exact line and nothing after it:\n"
+        "FINAL SCORE: <integer 1-10>"
     )
 
-def build_review_prompt(source_code: str, documentation: str, language: str) -> str:
+
+def _build_review_prompt(source_code: str, documentation: str, language: str) -> str:
     fence = _CODE_FENCES.get(language, "")
     return (
         f"Review the documentation for this entire {language} file.\n\n"
@@ -54,33 +69,48 @@ def build_review_prompt(source_code: str, documentation: str, language: str) -> 
     )
 
 
-def parse_review(response: str) -> tuple[int, str]:
-    """Extract score and feedback from Ollama's review response."""
-    score_match = re.search(r"SCORE:\s*(\d+)", response, re.IGNORECASE)
-    feedback_match = re.search(r"FEEDBACK:\s*(.+)", response, re.IGNORECASE | re.DOTALL)
+def _parse_review(response: str) -> tuple[int, str]:
+    # primary: appended FINAL SCORE line
+    score_match = re.search(r"FINAL SCORE:\s*(\d+)", response, re.IGNORECASE)
 
-    score = int(score_match.group(1)) if score_match else 5
-    score = max(1, min(10, score))  # clamp to 1-10
-    feedback = feedback_match.group(1).strip() if feedback_match else response.strip()
-    return score, feedback
+    # fallbacks for non-compliant responses
+    if not score_match:
+        score_match = re.search(r"SCORE:\s*(\d+)", response, re.IGNORECASE)
+    if not score_match:
+        score_match = re.search(r"score\s+is\s+\**(\d+)", response, re.IGNORECASE)
+    if not score_match:
+        score_match = re.search(r"\*\*(\d+)\*\*", response)
+
+    if score_match:
+        score = int(score_match.group(1))
+    else:
+        score = 2
+
+    score = max(1, min(10, score))
+
+    return score
 
 
 class ReviewerAgent(BaseAgent):
     def __init__(self, memory):
         super().__init__("ReviewerAgent", memory)
+
     def run(self, score_only: bool = False) -> bool:
         doc = self.memory.file_documentation
         if not doc:
             return False
 
         self.log("Reviewing full file documentation...")
-        prompt = build_review_prompt(self.memory.source_code, doc, self.memory.language)
-        response = call_ollama(prompt, system=_build_system_prompt(self.memory.language),
-                               model=REVIEWER_MODEL, options={"temperature": REVIEWER_TEMPERATURE})
-
-        score, feedback = parse_review(response)
+        prompt = _build_review_prompt(self.memory.source_code, doc, self.memory.language)
+        response = call_ollama(
+            prompt,
+            system=_build_system_prompt(self.memory.language),
+            model=REVIEWER_MODEL,
+            options={"temperature": REVIEWER_TEMPERATURE}
+        )
+        score = _parse_review(response)
         self.memory.file_review_score = score
-        self.memory.file_feedback = feedback
+        self.memory.file_feedback = response
         self.memory.file_approved = score_only or score >= APPROVAL_THRESHOLD
 
         self.log(f"  {'APPROVED' if self.memory.file_approved else 'REJECTED'} (score: {score}/10)")

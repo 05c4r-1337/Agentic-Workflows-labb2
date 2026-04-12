@@ -6,7 +6,7 @@ Markdown file, organized by element type.
 from pathlib import Path
 from agents.base_agent import BaseAgent
 from tools.code_tools import write_markdown
-from config import MODEL, DOC_WRITER_MODEL, REVIEWER_MODEL, FACT_CHECKER_MODEL, SUMMARY_MODEL
+from config import MODEL, DOC_WRITER_MODEL, REVIEWER_MODEL, FACT_CHECKER_MODEL
 
 HEADER_TEMPLATE = """# Documentation: `{filename}`
 
