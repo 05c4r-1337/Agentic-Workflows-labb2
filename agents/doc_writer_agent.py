@@ -54,7 +54,6 @@ def _build_prompt(source_code: str, language: str, feedback: str = "", existing_
             "Specific issues to fix:\n"
             f'"""{feedback}"""\n\n'
             "Rewrite the MARKDOWN DOCUMENTATION for the C# source file above to fix only these issues. "
-            "Do not change anything that is not mentioned. Do not write code, analysis, or commentary."
             "DO NOT CHANGE ANYTHING THAT ISNT STATED IN THE FEEDBACK. Do not write code, analysis, or commentary."
         )
 
