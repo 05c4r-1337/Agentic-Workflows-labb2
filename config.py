@@ -7,9 +7,9 @@ All tunable constants live here so they stay in sync across agents.
 MODEL = "gemma4:e4b"
 
 # Per-agent model overrides (set to None to use the default MODEL)
-DOC_WRITER_MODEL = "gemma4:e2b"
-REVIEWER_MODEL = "gemma4:e2b"
-FACT_CHECKER_MODEL = "gemma4:e2b"
+DOC_WRITER_MODEL = "gemma4:e4b"
+REVIEWER_MODEL = "gemma4:e4b"
+FACT_CHECKER_MODEL = "gemma4:e4b"
 FORMATTER_MODEL = "llama3.1:8b"
 
 # Maximum number of revision attempts before a doc entry is force-approved
