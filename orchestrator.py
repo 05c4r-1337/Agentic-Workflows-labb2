@@ -43,8 +43,10 @@ class Orchestrator:
         suffix = f"_baseline_docs_{ts}.md" if baseline else f"_docs_{ts}.md"
         verbose_log_path = None
         if verbose:
+            logs_dir = Path("logs")
+            logs_dir.mkdir(parents=True, exist_ok=True)
             log_suffix = f"_baseline_verbose_{ts}.txt" if baseline else f"_verbose_{ts}.txt"
-            verbose_log_path = str(Path(output_dir) / (stem + log_suffix))
+            verbose_log_path = str(logs_dir / (stem + log_suffix))
         self.memory = SessionMemory(
             target_file=target_file,
             language=language,
