@@ -10,7 +10,7 @@ MODEL = "gemma4:e4b"
 DOC_WRITER_MODEL = "gemma4:e4b"
 REVIEWER_MODEL = "gemma4:e4b"
 FACT_CHECKER_MODEL = "gemma4:e4b"
-FORMATTER_MODEL = "qwen3.5:9b"
+FORMATTER_MODEL = "llama3.1:8b"
 
 # Maximum number of revision attempts before a doc entry is force-approved
 MAX_RETRIES = 6
