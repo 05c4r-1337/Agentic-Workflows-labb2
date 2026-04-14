@@ -24,7 +24,7 @@ class SessionMemory:
     file_review_score: Optional[int] = None
     file_fact_check_issues: Optional[str] = None
     fact_check_retries: int = 0
-
+    file_review_formatted: Optional[str] = None
     # Summary
     file_summary: Optional[str] = None
 
