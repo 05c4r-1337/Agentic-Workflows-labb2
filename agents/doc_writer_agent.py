@@ -68,13 +68,13 @@ class DocWriterAgent(BaseAgent):
         super().__init__("DocWriterAgent", memory)
 
     def run(self):
-        feedback = self.memory.file_feedback or ""
+        feedback = self.memory.file_review_formatted or ""
         language = self.memory.language
         if feedback:
             self.log("Rewriting documentation with feedback:")
         else:
             self.log("Writing documentation")        
-        prompt = _build_prompt(self.memory.source_code, language, feedback, self.memory.file_review_formatted)
+        prompt = _build_prompt(self.memory.source_code, language, feedback, self.memory.file_documentation)
         system = _build_system_prompt(language)
         documentation = call_ollama(
             prompt, system=system,
