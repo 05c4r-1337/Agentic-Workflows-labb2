@@ -10,6 +10,7 @@ MODEL = "gemma4:e4b"
 DOC_WRITER_MODEL = "gemma4:e4b"
 REVIEWER_MODEL = "gemma4:e4b"
 FACT_CHECKER_MODEL = "gemma4:e4b"
+FORMATTER_MODEL = "qwen3.5:9b"
 
 # Maximum number of revision attempts before a doc entry is force-approved
 MAX_RETRIES = 6
@@ -25,9 +26,11 @@ ABSTRACTION = 1
 
 # Per-agent temperature settings
 DOC_WRITER_TEMPERATURE = 0.6
-REVIEWER_TEMPERATURE = 0.1
+REVIEWER_TEMPERATURE = 0.01
 FACT_CHECKER_TEMPERATURE = 0.0
 SUMMARY_TEMPERATURE = 0.4
+SUMMARY_TEMPERATURE = 0.4
+FORMATTER_TEMPERATURE = 0.0
 
 # Ollama request timeout in seconds
 OLLAMA_TIMEOUT = 600
