@@ -6,6 +6,7 @@ the entry is sent back for revision by the DocWriter.
 
 import re
 from agents.base_agent import BaseAgent
+from agents.format_agent import FormattingAgent
 from tools.ollama_tools import call_ollama
 from config import APPROVAL_THRESHOLD, REVIEWER_MODEL, REVIEWER_TEMPERATURE
 
@@ -46,17 +47,6 @@ def _build_system_prompt(language: str) -> str:
         "  [Item X] — <what is absent> is not documented; a reader cannot determine <what they cannot do as a result>.\n"
         "If there are no FAILs, write: No issues found.\n"
         "Do not comment on factual correctness, code style, or formatting.\n\n"
-
-        "STEP 3 — SCORE\n"
-        "Count your FAIL results (ignore N/A). Critical items are A, B, C. All others are minor.\n"
-        "  0 FAIL  → 9 (or 10 if the documentation includes a concrete usage example)\n"
-        "  1 FAIL  → 7 if the failed item is critical; 8 if minor\n"
-        "  2 FAIL  → 5 if any critical item failed; 6 if both are minor\n"
-        "  3 FAIL  → 4\n"
-        "  4+ FAIL → 1\n\n"
-
-        "You MUST end your entire response with this exact line and nothing after it:\n"
-        "FINAL SCORE: <integer 1-10>"
     )
 
 
@@ -67,29 +57,6 @@ def _build_review_prompt(source_code: str, documentation: str, language: str) ->
         f"Source code:\n```{fence}\n{source_code}\n```\n\n"
         f"Generated documentation:\n{documentation}"
     )
-
-
-def _parse_review(response: str) -> tuple[int, str]:
-    # primary: appended FINAL SCORE line
-    score_match = re.search(r"FINAL SCORE:\s*(\d+)", response, re.IGNORECASE)
-
-    # fallbacks for non-compliant responses
-    if not score_match:
-        score_match = re.search(r"SCORE:\s*(\d+)", response, re.IGNORECASE)
-    if not score_match:
-        score_match = re.search(r"score\s+is\s+\**(\d+)", response, re.IGNORECASE)
-    if not score_match:
-        score_match = re.search(r"\*\*(\d+)\*\*", response)
-
-    if score_match:
-        score = int(score_match.group(1))
-    else:
-        score = 2
-
-    score = max(1, min(10, score))
-
-    return score
-
 
 class ReviewerAgent(BaseAgent):
     def __init__(self, memory):
@@ -108,9 +75,9 @@ class ReviewerAgent(BaseAgent):
             model=REVIEWER_MODEL,
             options={"temperature": REVIEWER_TEMPERATURE}
         )
-        score = _parse_review(response)
-        self.memory.file_review_score = score
         self.memory.file_feedback = response
+        FormattingAgent(self.memory).run()
+        score = self.memory.file_review_score
         self.memory.file_approved = score_only or score >= APPROVAL_THRESHOLD
 
         self.log(f"  {'APPROVED' if self.memory.file_approved else 'REJECTED'} (score: {score}/10)")
