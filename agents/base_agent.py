@@ -11,5 +11,8 @@ class BaseAgent:
     def log(self, message: str):
         self.memory.log(self.name, message)
 
+    def log_output(self, label: str, content: str):
+        self.memory.log_output(self.name, label, content)
+
     def run(self):
         raise NotImplementedError

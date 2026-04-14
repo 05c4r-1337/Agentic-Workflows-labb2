@@ -15,6 +15,7 @@ class SessionMemory:
     source_code: str = ""
     language: str = "python"
     output_path: str = ""
+    verbose_log_path: Optional[str] = None
 
     # Documentation state
     file_documentation: Optional[str] = None
@@ -35,6 +36,18 @@ class SessionMemory:
         entry = f"[{agent}] {message}"
         self.agent_log.append(entry)
         print(entry)
+        if self.verbose_log_path:
+            with open(self.verbose_log_path, "a", encoding="utf-8") as f:
+                f.write(entry + "\n")
+
+    def log_output(self, agent: str, label: str, content: str):
+        """Write full agent output content to the verbose log file only (not terminal)."""
+        if not self.verbose_log_path:
+            return
+        separator = "=" * 60
+        header = f"{separator}\n[{agent}] {label}\n{separator}\n"
+        with open(self.verbose_log_path, "a", encoding="utf-8") as f:
+            f.write(header + content + "\n\n")
 
     def summary(self) -> str:
         status = "approved" if self.file_approved else "pending"

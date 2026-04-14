@@ -35,16 +35,21 @@ _EXTENSION_TO_LANGUAGE = {
 
 
 class Orchestrator:
-    def __init__(self, target_file: str, output_dir: str = ".", baseline: bool = False):
+    def __init__(self, target_file: str, output_dir: str = ".", baseline: bool = False, verbose: bool = False):
         self.baseline = baseline
         language = _EXTENSION_TO_LANGUAGE.get(Path(target_file).suffix.lower(), "python")
         stem = Path(target_file).stem
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         suffix = f"_baseline_docs_{ts}.md" if baseline else f"_docs_{ts}.md"
+        verbose_log_path = None
+        if verbose:
+            log_suffix = f"_baseline_verbose_{ts}.txt" if baseline else f"_verbose_{ts}.txt"
+            verbose_log_path = str(Path(output_dir) / (stem + log_suffix))
         self.memory = SessionMemory(
             target_file=target_file,
             language=language,
             output_path=str(Path(output_dir) / (stem + suffix)),
+            verbose_log_path=verbose_log_path,
         )
         self._output_dir = output_dir
 
@@ -122,5 +127,7 @@ class Orchestrator:
 
         print(f"\nOutput: {self.memory.output_path}")
         print(f"Eval:   {eval_path}")
+        if self.memory.verbose_log_path:
+            print(f"Log:    {self.memory.verbose_log_path}")
         print(f"Summary: {self.memory.summary()}")
         print_report(report)

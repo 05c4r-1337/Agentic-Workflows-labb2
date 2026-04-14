@@ -114,4 +114,5 @@ class ReviewerAgent(BaseAgent):
         self.memory.file_approved = score_only or score >= APPROVAL_THRESHOLD
 
         self.log(f"  {'APPROVED' if self.memory.file_approved else 'REJECTED'} (score: {score}/10)")
+        self.log_output(f"Review response (score: {score}/10)", response)
         return self.memory.file_approved

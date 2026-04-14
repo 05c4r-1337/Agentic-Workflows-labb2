@@ -30,6 +30,11 @@ def main():
         action="store_true",
         help="Run in baseline mode: single DocWriter pass, no review loop or fact-checking",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Write all agent log messages to a .txt file in the output directory",
+    )
     args = parser.parse_args()
 
     if not Path(args.target).exists():
@@ -48,6 +53,7 @@ def main():
         target_file=args.target,
         output_dir=args.output_dir,
         baseline=args.baseline,
+        verbose=args.verbose,
     )
     orchestrator.run()
 

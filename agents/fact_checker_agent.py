@@ -67,6 +67,7 @@ class FactCheckerAgent(BaseAgent):
                                options={"num_predict": 2048, "num_ctx": 16384,
                                         "temperature": FACT_CHECKER_TEMPERATURE})
         issues = _parse_issues(response)
+        self.log_output("Fact-check response", response)
         if issues.lower() == "none":
             self.log("No issues found.")
             self.memory.file_fact_check_issues = "None"

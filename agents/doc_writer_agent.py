@@ -83,3 +83,4 @@ class DocWriterAgent(BaseAgent):
         )
         self.memory.file_documentation = documentation
         self.log(f"Done. ({len(documentation)} chars)")
+        self.log_output("Generated documentation", documentation)
