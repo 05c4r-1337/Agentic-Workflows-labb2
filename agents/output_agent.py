@@ -6,7 +6,7 @@ Markdown file, organized by element type.
 from pathlib import Path
 from agents.base_agent import BaseAgent
 from tools.code_tools import write_markdown
-from config import MODEL, DOC_WRITER_MODEL, REVIEWER_MODEL, FACT_CHECKER_MODEL, SUMMARY_MODEL
+from config import MODEL, DOC_WRITER_MODEL, REVIEWER_MODEL, FACT_CHECKER_MODEL
 
 HEADER_TEMPLATE = """# Documentation: `{filename}`
 
@@ -32,44 +32,24 @@ class OutputAgent(BaseAgent):
     def run(self):
         from datetime import datetime
 
-        entries = self.memory.get_approved()
-        if not entries:
-            self.log("No approved entries to write.")
+        doc = self.memory.best_documentation or self.memory.file_documentation
+        if not doc:
+            self.log("No documentation to write.")
             return
+        if self.memory.best_documentation and self.memory.best_documentation is not self.memory.file_documentation:
+            tier = "fact-clean" if self.memory.best_fact_clean else "best-effort"
+            self.log(f"Using best-so-far doc ({tier}, score: {self.memory.best_score}/10) instead of last cycle.")
 
         filename = Path(self.memory.target_file).name
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-        sections: dict[str, list[str]] = {k: [] for k in SECTION_ORDER}
-
-        for entry in entries:
-            kind = entry.element_type
-            if kind not in sections:
-                kind = "function"
-
-            block = f"## `{entry.name}`\n\n"
-            block += f"**Signature:** `{entry.signature}`\n\n"
-            block += (entry.documentation or "*(No documentation generated.)*").strip()
-            block += "\n\n---\n"
-            sections[kind].append(block)
-
         model_display = DOC_WRITER_MODEL or MODEL
+
         content = HEADER_TEMPLATE.format(filename=filename, timestamp=timestamp, model=model_display)
         summary = getattr(self.memory, "file_summary", None)
         if summary:
             content += f"## Summary\n\n{summary.strip()}\n\n---\n\n"
 
-        for kind in SECTION_ORDER:
-            if sections[kind]:
-                content += f"# {SECTION_TITLES[kind]}\n\n"
-                content += "\n".join(sections[kind])
-                content += "\n"
+        content += doc.strip() + "\n"
 
-        # Agent log appendix
-        #content += "\n\n# Agent Log\n\n```\n"
-        #content += "\n".join(self.memory.agent_log)
-        #content += "\n```\n"
-
-        output_path = self.memory.output_path
-        write_markdown(content, output_path)
-        self.log(f"Markdown written to: {output_path}")
+        write_markdown(content, self.memory.output_path)
+        self.log(f"Markdown written to: {self.memory.output_path}")

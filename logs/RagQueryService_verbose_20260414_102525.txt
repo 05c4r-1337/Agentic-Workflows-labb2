@@ -1,0 +1,81 @@
+[Orchestrator] === Documentation Workflow Started (mode: full) ===
+[Orchestrator] Read file: sample_code/RagQueryService.cs
+[Orchestrator] --- Cycle #1/10 ---
+[DocWriterAgent] Writing documentation
+[DocWriterAgent] Done. (5113 chars)
+============================================================
+[DocWriterAgent] Generated documentation
+============================================================
+## IRagQueryService
+
+Defines the contract for services responsible for handling Retrieval-Augmented Generation (RAG) queries. This interface ensures that any implementation provides a consistent mechanism for retrieving context and generating an answer based on that context.
+
+### QueryAsync(RagQueryRequest request)
+
+Asynchronously executes a RAG query. This method first retrieves relevant documents from multiple specified knowledge bases (collections) using semantic search, constructs a comprehensive context, and then uses an LLM (via Ollama) to generate a final, grounded answer based on the provided context.
+
+| Parameter | Type | Description |
+| :--- | :--- | :--- |
+| request | `RagQueryRequest` | Contains the user's query, the collections to search, and configuration options like maximum results. |
+
+| Return Value | Type | Description |
+| :--- | :--- | :--- |
+| `Task<RagQueryResponse>` | | A task that resolves to a `RagQueryResponse` object containing the generated answer, sources used, and query timing details. |
+
+## RagQueryService
+
+Implements the `IRagQueryService` interface, providing the core logic for executing RAG queries. It coordinates interactions between embedding services, vector databases (Weaviate), and large language models (Ollama).
+
+### Constructor
+
+Initializes the `RagQueryService` with necessary dependencies: the vector database client, embedding service, Ollama client, logging mechanism, and configuration settings. It retrieves the specified chat model name from the configuration, defaulting to `"gpt-oss:20b"` if not found.
+
+| Parameter | Type | Description |
+| :--- | :--- | :--- |
+| weaviateService | `IWeaviateService` | The service used to perform semantic searches against the vector database. |
+| embeddingService | `IEmbeddingService` | The service responsible for converting the user's text query into a numerical embedding vector. |
+| ollamaClient | `OllamaClient` | The client used to communicate with the Ollama LLM endpoint for generating the final answer. |
+| logger | `ILogger<RagQueryService>` | The logging service used to record query processing steps and errors. |
+| configuration | `IConfiguration` | The application configuration source, used specifically to retrieve the `Ollama:ChatModel` setting. |
+
+### QueryAsync(RagQueryRequest request)
+
+Executes the full RAG workflow:
+
+1. **Embedding:** Converts the `request.Query` into an embedding vector using `_embeddingService.GetEmbeddingAsync`.
+2. **Retrieval:** Iterates through all `request.Collections` and performs a semantic search in Weaviate using the embedding vector.
+3. **Sorting/Filtering:** Collects all results, sorts them based on the distance score (lower distance means higher relevance), and takes the top `request.MaxResults`.
+4. **Source Preparation:** If `request.IncludeSources` is true, it formats the top results into `SourceDocument` objects, calculating a score and parsing metadata.
+5. **Context Building:** Calls `BuildContext` to structure the retrieved content into a single, comprehensive string context, grouping results by collection type (Customers, WebsiteNavigation, etc.).
+6. **Prompt Construction:** Builds the `OllamaChatRequest` using a predefined `SystemPromptTemplate`. This template injects the built context and defines the assistant's role and strict answering rules.
+7. **Generation:** Calls `_ollamaClient.ChatAsync` to send the prompt and receive the final generated answer.
+8. **Timing:** Measures and records the total execution time of the query process.
+9. **Error Handling:** Catches any exceptions, logs the error, and returns a default error message in the `RagQueryResponse`.
+
+The internal logic uses the `SystemPromptTemplate` to enforce strict adherence to the provided context, instructing the LLM to only answer based on the retrieved information.
+
+### BuildContext(List<(WeaviateSearchResult Result, string Collection)> results)
+
+This private method is responsible for aggregating the raw search results into a structured context string suitable for the LLM prompt. It groups results into distinct sections:
+
+1. **Customer Information:** Collects content from results belonging to the "Customers" collection.
+2. **Website Navigation:** Collects content from results belonging to the "WebsiteNavigation" collection.
+3. **Additional Information:** Collects content from all other collections.
+
+It formats these sections with clear headers (`=== ... ===`) and separators (`---`) to help the LLM understand the context structure.
+
+### ParseMetadata(string metadataJson)
+
+Safely parses a JSON string containing metadata associated with a search result. It attempts to deserialize the JSON string into a `Dictionary<string, object>`. If the input string is null, whitespace, or if deserialization fails, it returns an empty dictionary to prevent runtime errors.
+
+#### Code Example
+
+```csharp
+// Example usage of ParseMetadata:
+string jsonMetadata = "{\"purchase_id\": \"12345\", \"date\": \"2023-10-26\"}";
+var metadata = RagQueryService.ParseMetadata(jsonMetadata);
+// metadata will contain {"purchase_id": "12345", "date": "2023-10-26"}
+```
+
+[ReviewerAgent] Reviewing full file documentation...
+[FormattingAgent] Formatting review output...

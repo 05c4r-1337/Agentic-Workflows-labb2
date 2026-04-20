@@ -7,9 +7,8 @@ with the issues stored in review_feedback so the writer can address them.
 """
 
 from agents.base_agent import BaseAgent
-from memory.session_memory import DocEntry
 from tools.ollama_tools import call_ollama
-from config import FACT_CHECKER_MODEL, FACT_CHECKER_TEMPERATURE
+from config import FACT_CHECKER_MODEL, FACT_CHECKER_TEMPERATURE, MAX_RETRIES
 
 _LANGUAGE_LABELS = {"python": "Python", "csharp": "C#"}
 _CODE_FENCES = {"python": "python", "csharp": "csharp"}
@@ -22,26 +21,29 @@ SYSTEM_PROMPT = (
     "  - Parameter names or types that differ from the source code\n"
     "  - Methods, properties, or classes referenced in the documentation that do not exist in the source\n"
     "  - Return types or field names that contradict what the code actually returns\n"
-    "  - Described behaviour that the source code clearly does not implement\n\n"
-    "Do NOT flag: vague descriptions, missing detail, style issues, or omissions. "
-    "Only flag claims that directly contradict the source code.\n\n"
-    "RESPOND IN THIS EXACT FORMAT:\n"
-    "ISSUES: <bullet list of false or unsupported claims, or 'None'>"
+    "  - Described behaviour that the source code clearly does not implement\n"
+    "  - Sorting or ordering logic that contradicts the actual implementation\n"
+    "  - Algorithmic details (calculations, conditions, thresholds) that differ from the source\n"
+    "  - Terminology swaps that change the meaning (e.g. 'relevance score' vs 'distance')\n\n"
+    "Be thorough — read every descriptive claim and verify it against the source code line by line.\n"
+    "RESPOND IN THIS EXACT FORMAT!!!:\n"
+    "ISSUES: <bullet list of false or unsupported claims> or <No issues found>"
 )
 
 
-def _build_prompt(entry: DocEntry, language: str) -> str:
-    label = _LANGUAGE_LABELS.get(language, language)
+def _build_prompt(source_code: str, documentation: str, language: str) -> str:
     fence = _CODE_FENCES.get(language, "")
     return (
-        f"Fact-check this {label} documentation against the actual source code.\n\n"
-        f"Source code:\n```{fence}\n{entry.source_code}\n```\n\n"
-        f"Documentation to check:\n{entry.documentation}\n\n"
+        f"Fact-check this {language} documentation against the actual source code.\n\n"
+        f"Source code:\n```{fence}\n{source_code}\n```\n\n"
+        f"Documentation to check:\n{documentation}\n\n"
     )
 
 
 def _parse_issues(response: str) -> str:
     """Returns the issues string, or 'None' if no problems found."""
+    if "no issues found" in response.lower():
+        return "none"
     if "ISSUES:" in response:
         parts = response.split("ISSUES:", 1)[1]
         issues = parts.split("CORRECTED:")[0].strip() if "CORRECTED:" in parts else parts.strip()
@@ -52,42 +54,29 @@ def _parse_issues(response: str) -> str:
 class FactCheckerAgent(BaseAgent):
     def __init__(self, memory):
         super().__init__("FactCheckerAgent", memory)
-
-    def check(self, entry: DocEntry) -> bool:
-        """Check a single entry. Returns True if issues were found (entry sent back for rewrite)."""
-        if entry.fact_check_retries >= 5:
-            self.log(f"  Skipping '{entry.name}' (fact-check retry limit reached).")
+    def run(self) -> bool:
+        if not self.memory.file_documentation:
+            return False
+        if getattr(self.memory, 'fact_check_retries', 0) >= MAX_RETRIES:
+            self.log("Fact-check retry limit reached, skipping.")
             return False
 
-        self.log(f"Checking '{entry.name}'...")
-        language = self.memory.language
-        prompt = _build_prompt(entry, language)
+        self.log("Fact-checking full file documentation...")
+        prompt = _build_prompt(self.memory.source_code, self.memory.file_documentation, self.memory.language)
         response = call_ollama(prompt, system=SYSTEM_PROMPT, model=FACT_CHECKER_MODEL,
-                               options={"num_predict": 1024, "num_ctx": 8192, "temperature": FACT_CHECKER_TEMPERATURE})
-
+                               options={"num_predict": 2048, "num_ctx": 16384,
+                                        "temperature": FACT_CHECKER_TEMPERATURE})
         issues = _parse_issues(response)
-
+        self.log_output("Fact-check response", response)
         if issues.lower() == "none":
-            self.log(f"  No issues found.")
-            entry.fact_check_issues = "None"
+            self.log("No issues found.")
+            self.memory.file_fact_check_issues = "None"
             return False
 
-        entry.fact_check_issues = issues
-        entry.fact_check_retries += 1
-        entry.approved = False
-        entry.documentation = None
-        entry.review_feedback = f"Fact-check issues: {issues}"
-        entry.retry_count += 1
-        self.log(f"  Issues found, sent back for rewrite: {issues[:120]}...")
+        self.memory.file_fact_check_issues = issues
+        self.memory.fact_check_retries = getattr(self.memory, 'fact_check_retries', 0) + 1
+        self.memory.file_approved = False
+        existing = self.memory.file_review_formatted or ""
+        self.memory.file_review_formatted = f"{existing}\nFact-check issues:\n{issues}".strip()
+        self.log(f"Issues found, sent back for rewrite: {issues[:120]}...")
         return True
-
-    def run(self) -> list[DocEntry]:
-        """Fact-check all approved entries that haven't been checked yet. Returns list of entries sent back for rewrite."""
-        approved = self.memory.get_approved()
-        pending = [e for e in approved if e.fact_check_issues != "None" and e.documentation]
-        self.log(f"Fact-checking {len(pending)} approved entries...")
-        rejected = []
-        for entry in pending:
-            if self.check(entry):
-                rejected.append(entry)
-        return rejected

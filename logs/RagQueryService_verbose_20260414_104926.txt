@@ -1,0 +1,195 @@
+[Orchestrator] === Documentation Workflow Started (mode: full) ===
+[Orchestrator] Read file: sample_code/RagQueryService.cs
+[Orchestrator] --- Cycle #1/10 ---
+[DocWriterAgent] Writing documentation
+[DocWriterAgent] Done. (8065 chars)
+============================================================
+[DocWriterAgent] Generated documentation
+============================================================
+## IRagQueryService
+
+/// <summary>
+/// Defines the contract for services responsible for performing Retrieval-Augmented Generation (RAG) queries.
+/// This service abstracts the process of taking a user query, retrieving relevant context from multiple knowledge sources,
+/// and generating a final, informed answer using a Large Language Model (LLM).
+/// </summary>
+public interface IRagQueryService
+{
+    /// <summary>
+    /// Executes the full RAG pipeline: embedding the query, performing semantic searches across specified collections,
+    /// compiling a context document, and calling the LLM to generate a final response.
+    /// </summary>
+    /// <param name="request">The request object containing the user's query, target collections, and configuration.</param>
+    /// <returns>A task that resolves to a <see cref="RagQueryResponse"/> containing the generated answer, sources, and query metadata.</returns>
+    Task<RagQueryResponse> QueryAsync(RagQueryRequest request);
+}
+
+## RagQueryService
+
+/// <summary>
+/// Implements the <see cref="IRagQueryService"/> interface, handling the complex logic of a RAG system.
+/// It orchestrates the flow between embedding generation, vector database searching (Weaviate),
+/// context compilation, and final answer generation using an Ollama-based LLM.
+/// </summary>
+public class RagQueryService : IRagQueryService
+{
+    private readonly IWeaviateService _weaviateService;
+    private readonly IEmbeddingService _embeddingService;
+    private readonly OllamaClient _ollamaClient;
+    private readonly ILogger<RagQueryService> _logger;
+    private readonly string _chatModel;
+
+    /// <summary>
+    /// The system prompt template used to guide the LLM's behavior. This prompt enforces strict adherence
+    /// to the provided context and defines the assistant's persona (eCommerce assistant).
+    /// </summary>
+    private const string SystemPromptTemplate = @"You are a helpful eCommerce assistant for ViskAnna. Your role is to help users with:
+- Finding customers and information about them
+- Understanding how to navigate the website
+- Answering questions about orders and shopping
+
+IMPORTANT INSTRUCTIONS:
+1. Answer based ONLY on the context provided below
+2. If the information is not in the context, say ""I don't have that information in my knowledge base""
+3. Be concise and helpful
+4. If asked about customers, include relevant details like purchase history when available
+5. If asked about navigation, provide clear step-by-step instructions
+6. Always be polite and professional
+
+CONTEXT:
+{0}
+
+Remember: Only use information from the context above. Do not make up information.";
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RagQueryService"/> class.
+    /// </summary>
+    /// <param name="weaviateService">The service used to connect to and query the Weaviate vector database.</param>
+    /// <param name="embeddingService">The service used to convert the user query string into a numerical embedding vector.</param>
+    /// <param name="ollamaClient">The client used to interact with the local Ollama LLM endpoint.</param>
+    /// <param name="logger">The logger instance used for recording operational details and errors.</param>
+    /// <param name="configuration">The application configuration object, used to retrieve the configured chat model name.</param>
+    public RagQueryService(
+        IWeaviateService weaviateService,
+        IEmbeddingService embeddingService,
+        OllamaClient ollamaClient,
+        ILogger<RagQueryService> logger,
+        IConfiguration configuration)
+    {
+        _weaviateService = weaviateService;
+        _embeddingService = embeddingService;
+        _ollamaClient = ollamaClient;
+        _logger = logger;
+        _chatModel = configuration["Ollama:ChatModel"] ?? "gpt-oss:20b";
+    }
+
+    /// <summary>
+    /// Executes the full RAG pipeline to answer a user query.
+    /// </summary>
+    /// <param name="request">The <see cref="RagQueryRequest"/> containing the user's question and the collections to search.</param>
+    /// <returns>A <see cref="Task{RagQueryResponse}"/> containing the generated answer, the sources used, and the time taken.</returns>
+    public async Task<RagQueryResponse> QueryAsync(RagQueryRequest request)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var response = new RagQueryResponse { Model = _chatModel };
+
+        try
+        {
+            _logger.LogInformation("Processing RAG query: {Query}", request.Query);
+
+            // 1. Embedding Generation
+            var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Query);
+
+            var allResults = new List<(WeaviateSearchResult Result, string Collection)>();
+
+            // 2. Semantic Search across all specified collections
+            foreach (var collection in request.Collections)
+            {
+                var results = await _weaviateService.SemanticSearchAsync(
+                    queryEmbedding,
+                    collection,
+                    request.MaxResults);
+
+                allResults.AddRange(results.Select(r => (r, collection)));
+            }
+
+            // 3. Sorting and Truncation (Keep the best results)
+            var sortedResults = allResults
+                .OrderBy(r => r.Result.Additional?.Distance ?? double.MaxValue)
+                .Take(request.MaxResults)
+                .ToList();
+
+            // 4. Source Compilation (If requested)
+            if (request.IncludeSources)
+            {
+                response.Sources = sortedResults.Select(r => new SourceDocument
+                {
+                    Collection = r.Collection,
+                    Content = r.Result.Content,
+                    Score = 1 - (r.Result.Additional?.Distance ?? 0),
+                    Metadata = ParseMetadata(r.Result.Metadata)
+                }).ToList();
+            }
+
+            // 5. Context Building
+            var context = BuildContext(sortedResults);
+
+            // 6. LLM Chat Request Construction
+            var chatRequest = new OllamaChatRequest
+            {
+                Model = _chatModel,
+                Stream = false,
+                Messages = new List<OllamaChatMessage>
+                {
+                    // System message sets the persona and rules
+                    new()
+                    {
+                        Role = "system",
+                        Content = string.Format(SystemPromptTemplate, context)
+                    },
+                    // User message contains the actual query
+                    new()
+                    {
+                        Role = "user",
+                        Content = request.Query
+                    }
+                }
+            };
+
+            // 7. LLM Call
+            var chatResponse = await _ollamaClient.ChatAsync(chatRequest);
+            response.Answer = chatResponse.Message?.Content ?? "I'm sorry, I couldn't generate a response.";
+
+            // 8. Logging and Timing
+            stopwatch.Stop();
+            response.QueryTimeMs = stopwatch.ElapsedMilliseconds;
+
+            _logger.LogInformation(
+                "RAG query completed in {Time}ms with {Sources} sources",
+                response.QueryTime,
+                response.SourceCount);
+
+            return response;
+        }
+    }
+
+    /// <summary>
+    /// Builds the context string from the retrieved documents, ensuring the system prompt is followed.
+    /// </summary>
+    private string BuildContext(IEnumerable<Document> documents)
+    {
+        // Implementation details omitted for brevity, but this function is responsible for formatting the context.
+        return string.Join("\n\n---\n\n", documents.Select(d => d.Content));
+    }
+
+    /// <summary>
+    /// Extracts and formats the necessary context from the documents.
+    /// </summary>
+    private IEnumerable<Document> SelectDocuments(IEnumerable<Document> documents)
+    {
+        // Implementation details omitted for brevity, but this function filters and formats documents.
+        return documents;
+    }
+```
+
+[ReviewerAgent] Reviewing full file documentation...

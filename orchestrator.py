@@ -20,14 +20,12 @@ import time
 from datetime import datetime
 from pathlib import Path
 from memory.session_memory import SessionMemory
-from agents.analyzer_agent import AnalyzerAgent
 from agents.doc_writer_agent import DocWriterAgent
 from agents.reviewer_agent import ReviewerAgent
 from agents.output_agent import OutputAgent
-from agents.summary_agent import SummaryWriterAgent
 from agents.fact_checker_agent import FactCheckerAgent
 from evaluation import compute_report, save_report, print_report
-
+from tools.code_tools import read_file
 from config import MAX_RETRIES, MAX_CYCLES
 
 _EXTENSION_TO_LANGUAGE = {
@@ -37,16 +35,23 @@ _EXTENSION_TO_LANGUAGE = {
 
 
 class Orchestrator:
-    def __init__(self, target_file: str, output_dir: str = ".", baseline: bool = False):
+    def __init__(self, target_file: str, output_dir: str = ".", baseline: bool = False, verbose: bool = False):
         self.baseline = baseline
         language = _EXTENSION_TO_LANGUAGE.get(Path(target_file).suffix.lower(), "python")
         stem = Path(target_file).stem
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         suffix = f"_baseline_docs_{ts}.md" if baseline else f"_docs_{ts}.md"
+        verbose_log_path = None
+        if verbose:
+            logs_dir = Path("logs")
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            log_suffix = f"_baseline_verbose_{ts}.txt" if baseline else f"_verbose_{ts}.txt"
+            verbose_log_path = str(logs_dir / (stem + log_suffix))
         self.memory = SessionMemory(
             target_file=target_file,
             language=language,
             output_path=str(Path(output_dir) / (stem + suffix)),
+            verbose_log_path=verbose_log_path,
         )
         self._output_dir = output_dir
 
@@ -71,69 +76,43 @@ class Orchestrator:
         self.memory.log("Orchestrator", f"=== Documentation Workflow Started (mode: {mode}) ===")
         start_time = time.time()
 
-        # Step 1: Analyze
-        analyzer = AnalyzerAgent(self.memory)
-        analyzer.run()
-
-        # Step 2: Plan
-        self._plan()
+    # Step 1: just read the file
+        self.memory.source_code = read_file(self.memory.target_file)
+        self.memory.log("Orchestrator", f"Read file: {self.memory.target_file}")
 
         doc_writer = DocWriterAgent(self.memory)
         reviewer = ReviewerAgent(self.memory)
         cycles_used = 0
 
         if self.baseline:
-            # Baseline: single DocWriter pass + score-only review (no rejection loop)
             cycles_used = 1
-            self.memory.log("Orchestrator", "--- Baseline: single write pass ---")
             doc_writer.run()
             reviewer.run(score_only=True)
         else:
-            # Full: Write → Review → FactCheck loop
             fact_checker = FactCheckerAgent(self.memory)
-
-            iteration = 0
-            while iteration < MAX_CYCLES:
-                iteration += 1
+            for iteration in range(1, MAX_CYCLES + 1):
                 cycles_used = iteration
-                self.memory.log("Orchestrator", f"--- Write/Review cycle #{iteration}/{MAX_CYCLES} ---")
+                self.memory.log("Orchestrator", f"--- Cycle #{iteration}/{MAX_CYCLES} ---")
 
                 doc_writer.run()
-                rejected = reviewer.run()
+                approved = reviewer.run()
                 fact_rejected = fact_checker.run()
+                self.memory.record_candidate(fact_check_clean=not fact_rejected)
 
-                pending = self.memory.get_pending()
-                self.memory.log(
-                    "Orchestrator",
-                    f"Cycle complete. {self.memory.summary()} | {len(rejected)} quality rejections, "
-                    f"{len(fact_rejected)} fact-check rejections.",
-                )
-
-                if not pending:
-                    self.memory.log("Orchestrator", "All elements approved!")
+                if approved and not fact_rejected:
+                    self.memory.log("Orchestrator", "Documentation approved!")
                     break
 
-                if all(e.retry_count >= MAX_RETRIES for e in pending):
-                    self.memory.log(
-                        "Orchestrator",
-                        "Remaining elements hit max retries. Forcing approval.",
-                    )
-                    for e in pending:
-                        e.approved = True
-                        e.force_approved = True
+                retries = getattr(self.memory, 'fact_check_retries', 0)
+                if retries >= MAX_RETRIES:
+                    self.memory.log("Orchestrator", "Max retries hit, keeping current documentation.")
+                    self.memory.file_approved = True
                     break
             else:
-                self.memory.log(
-                    "Orchestrator",
-                    f"Reached max cycle limit ({MAX_CYCLES}). Forcing approval of remaining elements.",
-                )
-                for e in self.memory.get_pending():
-                    e.approved = True
-                    e.force_approved = True
+                self.memory.log("Orchestrator", "Max cycles reached, forcing approval.")
+                self.memory.file_approved = True
 
-        # Summary + Output
-        summary_writer = SummaryWriterAgent(self.memory)
-        summary_writer.run()
+        #  Output
 
         output_agent = OutputAgent(self.memory)
         output_agent.run()
@@ -151,5 +130,7 @@ class Orchestrator:
 
         print(f"\nOutput: {self.memory.output_path}")
         print(f"Eval:   {eval_path}")
+        if self.memory.verbose_log_path:
+            print(f"Log:    {self.memory.verbose_log_path}")
         print(f"Summary: {self.memory.summary()}")
         print_report(report)

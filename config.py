@@ -4,13 +4,13 @@ All tunable constants live here so they stay in sync across agents.
 """
 
 # Default Ollama model (used as fallback if no per-agent model is set)
-MODEL = "gemma3:12b"
+MODEL = "gemma4:e4b"
 
 # Per-agent model overrides (set to None to use the default MODEL)
-DOC_WRITER_MODEL = "gemma3:12b"
-REVIEWER_MODEL = "llama3.1:8b"
-FACT_CHECKER_MODEL = "qwen2.5-coder:7b"
-SUMMARY_MODEL = "gemma3:12b"
+DOC_WRITER_MODEL = "gemma4:e4b"
+REVIEWER_MODEL = "gemma4:e4b"
+FACT_CHECKER_MODEL = "gemma4:e4b"
+FORMATTER_MODEL = "llama3.1:8b"
 
 # Maximum number of revision attempts before a doc entry is force-approved
 MAX_RETRIES = 6
@@ -22,13 +22,14 @@ APPROVAL_THRESHOLD = 7
 MAX_CYCLES = 10
 
 # Abstraction level of the generated document
-ABSTRACTION = 10
+ABSTRACTION = 1
 
 # Per-agent temperature settings
 DOC_WRITER_TEMPERATURE = 0.6
-REVIEWER_TEMPERATURE = 0.1
+REVIEWER_TEMPERATURE = 0.01
 FACT_CHECKER_TEMPERATURE = 0.0
 SUMMARY_TEMPERATURE = 0.4
+FORMATTER_TEMPERATURE = 0.0
 
 # Ollama request timeout in seconds
 OLLAMA_TIMEOUT = 600

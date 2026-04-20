@@ -9,44 +9,68 @@ from datetime import datetime
 
 
 @dataclass
-class DocEntry:
-    element_type: str          # 'module', 'class', 'function', 'method'
-    name: str
-    signature: str
-    source_code: str
-    documentation: Optional[str] = None
-    review_score: Optional[int] = None
-    review_feedback: Optional[str] = None
-    retry_count: int = 0
-    approved: bool = False
-    force_approved: bool = False
-    fact_check_issues: Optional[str] = None
-    fact_check_retries: int = 0
-
-
-@dataclass
 class SessionMemory:
+    # Input
     target_file: str = ""
     source_code: str = ""
     language: str = "python"
-    doc_entries: list[DocEntry] = field(default_factory=list)
-    plan: list[str] = field(default_factory=list)
+    output_path: str = ""
+    verbose_log_path: Optional[str] = None
+
+    # Documentation state
+    file_documentation: Optional[str] = None
+    file_approved: bool = False
+    file_feedback: Optional[str] = None
+    file_review_score: Optional[int] = None
+    file_fact_check_issues: Optional[str] = None
+    fact_check_retries: int = 0
+    file_review_formatted: Optional[str] = None
+    # Best-so-far tracking. Fact-clean beats not-clean; within a tier, highest score wins.
+    best_documentation: Optional[str] = None
+    best_score: int = 0
+    best_fact_clean: bool = False
+    # Summary
+    file_summary: Optional[str] = None
+
+    # Internal
     agent_log: list[str] = field(default_factory=list)
     started_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    output_path: str = ""
 
     def log(self, agent: str, message: str):
         entry = f"[{agent}] {message}"
         self.agent_log.append(entry)
         print(entry)
+        if self.verbose_log_path:
+            with open(self.verbose_log_path, "a", encoding="utf-8") as f:
+                f.write(entry + "\n")
 
-    def get_pending(self) -> list[DocEntry]:
-        return [e for e in self.doc_entries if not e.approved]
-
-    def get_approved(self) -> list[DocEntry]:
-        return [e for e in self.doc_entries if e.approved]
+    def log_output(self, agent: str, label: str, content: str):
+        """Write full agent output content to the verbose log file only (not terminal)."""
+        if not self.verbose_log_path:
+            return
+        separator = "=" * 60
+        header = f"{separator}\n[{agent}] {label}\n{separator}\n"
+        with open(self.verbose_log_path, "a", encoding="utf-8") as f:
+            f.write(header + content + "\n\n")
 
     def summary(self) -> str:
-        total = len(self.doc_entries)
-        approved = len(self.get_approved())
-        return f"{approved}/{total} elements documented and approved"
+        status = "approved" if self.file_approved else "pending"
+        score = f", score: {self.file_review_score}/10" if self.file_review_score else ""
+        retries = f", retries: {self.fact_check_retries}" if self.fact_check_retries else ""
+        return f"Documentation {status}{score}{retries}"
+
+    def record_candidate(self, fact_check_clean: bool):
+        """Keep the best doc seen so far. Prefer fact-clean; fall back to best by score."""
+        if not self.file_documentation:
+            return
+        score = self.file_review_score or 0
+        # Fact-clean always beats not-clean, regardless of score.
+        if fact_check_clean and not self.best_fact_clean:
+            self.best_documentation = self.file_documentation
+            self.best_score = score
+            self.best_fact_clean = True
+            return
+        # Within the same tier, prefer higher score.
+        if fact_check_clean == self.best_fact_clean and score > self.best_score:
+            self.best_documentation = self.file_documentation
+            self.best_score = score

@@ -17,7 +17,6 @@ import sys
 import argparse
 from pathlib import Path
 from orchestrator import Orchestrator
-from tools.parsers import SUPPORTED_EXTENSIONS
 
 
 def main():
@@ -31,14 +30,20 @@ def main():
         action="store_true",
         help="Run in baseline mode: single DocWriter pass, no review loop or fact-checking",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Write all agent log messages to a .txt file in the output directory",
+    )
     args = parser.parse_args()
 
     if not Path(args.target).exists():
         print(f"Error: File not found: {args.target}")
         sys.exit(1)
+    SUPPORTED_EXTENSIONS = {".py", ".cs"}
 
     ext = Path(args.target).suffix.lower()
-    if ext not in SUPPORTED_EXTENSIONS:
+    if ext not in (SUPPORTED_EXTENSIONS):
         print(f"Error: Unsupported file type '{ext}'. Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}")
         sys.exit(1)
 
@@ -48,6 +53,7 @@ def main():
         target_file=args.target,
         output_dir=args.output_dir,
         baseline=args.baseline,
+        verbose=args.verbose,
     )
     orchestrator.run()
 
