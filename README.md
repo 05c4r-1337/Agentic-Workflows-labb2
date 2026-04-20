@@ -1,90 +1,104 @@
 # Automatiserad koddokumentation med agentiskt arbetsflöde
 
-Systemet är ett multi-agent-arbetsflöde som automatiskt genererar Markdown-dokumentation för Python- och C#-källkodsfiler. En Orchestrator koordinerar fem specialiserade agenter som arbetar i en iterativ loop tills all dokumentation är godkänd eller maximalt antal försök uppnåtts.
+Systemet är ett multi-agent-arbetsflöde som automatiskt genererar Markdown-dokumentation för Python- och C#-källkodsfiler. En Orchestrator koordinerar fyra specialiserade agenter som arbetar i en iterativ loop tills dokumentationen är godkänd eller maximalt antal cykler uppnåtts.
 
 ## Körning
 
 ```bash
 pip install requests
-python main.py sample_code/example.py docs/
+python main.py sample_code/RagQueryService.cs docs/
 ```
 
-För baseline-jämförelse (ett pass utan review-loop eller faktakontroll):
+Alternativ:
 
 ```bash
-python main.py sample_code/example.py docs/ --baseline
+# Baseline: ett pass utan review-loop eller faktakontroll
+python main.py sample_code/RagQueryService.cs docs/ --baseline
+
+# Skriv full agent-logg till logs/
+python main.py sample_code/RagQueryService.cs docs/ --verbose
 ```
 
-För att jämföra resultaten:
+Jämför en baseline mot full körning:
 
 ```bash
-python compare.py docs/example_baseline_eval.json docs/example_eval.json
+python compare.py docs/RagQueryService_baseline_eval_*.json docs/RagQueryService_eval_*.json
 ```
 
-Kräver att [Ollama](https://ollama.com) körs lokalt på port 11434 med modellen `llama3.1:8b`:
+Kräver att [Ollama](https://ollama.com) körs lokalt på port 11434 med modellerna som anges i `config.py`:
 
 ```bash
+ollama pull gemma4:e4b
 ollama pull llama3.1:8b
 ollama serve
 ```
+
+## Konfiguration
 
 All konfiguration finns i `config.py`:
 
 | Inställning | Standard | Beskrivning |
 |---|---|---|
-| `MODEL` | `llama3.1:8b` | Ollama-modell som används av alla agenter |
+| `MODEL` | `gemma4:e4b` | Fallback-modell om ingen agent-specifik modell sätts |
+| `DOC_WRITER_MODEL` | `gemma4:e4b` | Modell som genererar dokumentationen |
+| `REVIEWER_MODEL` | `gemma4:e4b` | Modell som kvalitetsgranskar |
+| `FACT_CHECKER_MODEL` | `gemma4:e4b` | Modell som faktakontrollerar mot källkoden |
+| `FORMATTER_MODEL` | `llama3.1:8b` | Modell som omformar granskningen till poäng + issue-lista |
 | `APPROVAL_THRESHOLD` | `7` | Minsta godkänd recensionspoäng (1–10) |
-| `MAX_RETRIES` | `3` | Max omskrivningsförsök per element |
+| `MAX_RETRIES` | `6` | Max antal faktakontroll-omskrivningar |
 | `MAX_CYCLES` | `10` | Max antal write/review-cykler |
-| `ABSTRACTION` | `10` | Abstraktionsnivå i genererad dokumentation (1–10) |
+| `ABSTRACTION` | `1` | Abstraktionsnivå i genererad dokumentation (1 = detaljerad, 10 = abstrakt) |
 
-## Miljö och indata
-
-Agenten tar emot en källkodsfil och en utdatakatalog som argument. Filen parsas med AST-analys (Python) eller regex (C#) för att extrahera kodelementens signaturer och källkod.
+Temperaturer per agent och `OLLAMA_TIMEOUT` finns också i `config.py`.
 
 ## Arkitektur
 
 ```
 main.py → Orchestrator
-              ├── AnalyzerAgent       – AST-parsning av källkodsfilen
-              ├── DocWriterAgent      – Genererar dokumentation via Ollama
-              ├── ReviewerAgent       – Kvalitetsgranskning (poäng 1–10)
-              ├── FactCheckerAgent    – Faktakontroll mot källkoden
-              ├── SummaryWriterAgent  – Övergripande filsammanfattning
-              └── OutputAgent         – Skriver Markdown-filen
+              ├── DocWriterAgent    – Genererar Markdown via Ollama
+              ├── ReviewerAgent     – Bedömer klarhet och fullständighet (poäng 1–10)
+              │     └── FormattingAgent – Normaliserar granskningen till issue-lista + poäng
+              ├── FactCheckerAgent  – Jämför dokumentationens påståenden mot källkoden
+              └── OutputAgent       – Skriver slutgiltiga Markdown-filen
 ```
 
-**Delat minne:** `SessionMemory` håller en lista av `DocEntry`-objekt, ett per kodelement. Varje entry bär sitt tillstånd: dokumentation, poäng, feedback, antal försök och faktakontrollstatus.
+**Delat minne:** `SessionMemory` håller hela tillståndet för körningen — källkod, aktuell dokumentation, granskningspoäng, faktafel-lista och, viktigt, en **best-so-far-spårning** (`best_documentation`, `best_score`, `best_fact_clean`) som behåller det bästa kandidat-dokumentet över alla cykler. Om sista cykeln presterar sämre än en tidigare skrivs den tidigare till fil.
 
 ## Agenter
 
-- **AnalyzerAgent** – Läser och tolkar källkodsfilen, skapar en `DocEntry` per kodelement i `SessionMemory`.
-- **DocWriterAgent** – Anropar Ollama och genererar Markdown-dokumentation. Vid omskrivning skickas reviewer-feedback med i prompten.
-- **ReviewerAgent** – Utvärderar dokumentationens kvalitet med LLM. Underkänner element under tröskelvärdet och skickar dem tillbaka till DocWriter.
-- **FactCheckerAgent** – Jämför godkänd dokumentation mot faktisk källkod. Vid faktafel avkänns elementet och skickas tillbaka för omskrivning med specificerade fel som feedback. Varje element kan maximalt fact-checkas en gång.
-- **SummaryWriterAgent** – Genererar en övergripande sammanfattning av filen.
-- **OutputAgent** – Sammanställer all godkänd dokumentation till en strukturerad Markdown-fil.
+- **DocWriterAgent** – Anropar Ollama och producerar Markdown för hela filen. Vid omskrivning skickas den tidigare dokumentationen och feedback (både kvalitet och fakta) med i prompten. Sampling-parametrar (`repeat_penalty=1.15`, `num_ctx=16384`, `num_predict=4096`) sätts explicit för att undvika repetitions-loopar.
+- **ReviewerAgent** – Kör en 9-punkts checklista ([A] syfte … [I] kodexempel) på dokumentationen. Den ser **inte** källkoden — den bedömer enbart klarhet och fullständighet. Resultatet skickas vidare till FormattingAgent.
+- **FormattingAgent** – Omformar den fria granskningstexten till en kompakt `Issues: …` + `FINAL SCORE: N`-struktur som både användaren och DocWriterAgent kan konsumera.
+- **FactCheckerAgent** – Jämför dokumentationen mot råa källkoden och flaggar felaktiga metodnamn, parametertyper, saknade metoder, motsägelsefull logik osv. Vid fel sätts elementet tillbaka till icke-godkänt och issues läggs till i feedback-kanalen.
+- **OutputAgent** – Skriver slutgiltiga Markdown-filen. Föredrar `best_documentation` över senast genererade om den är tydligt bättre.
 
 ## Arbetsflöde
 
-Orchestratorn kör en **plan → skriv → granska → faktakolla**-loop upp till `MAX_CYCLES` iterationer:
+Orchestratorn kör en **skriv → granska → faktakolla**-loop upp till `MAX_CYCLES` iterationer:
 
 ```
-1. AnalyzerAgent   – Extraherar kodelementens signaturer och källkod
-2. Orchestrator    – Skapar dokumentationsplan
-3. loop (max MAX_CYCLES):
-     DocWriterAgent   – Skriver/skriver om dokumentation för ej godkända element
-     ReviewerAgent    – Granskar kvalitet, underkänner vid poäng < APPROVAL_THRESHOLD
-     FactCheckerAgent – Kontrollerar fakta, avkänner vid fel
-   (avsluta om alla element godkänns)
-4. SummaryWriterAgent – Genererar filsammanfattning
-5. OutputAgent        – Skriver Markdown-filen
+1. Läs källkodsfilen
+2. loop (max MAX_CYCLES):
+     DocWriterAgent   – Skriver/skriver om dokumentationen
+     ReviewerAgent    – Bedömer (underkänner vid poäng < APPROVAL_THRESHOLD)
+     FactCheckerAgent – Kontrollerar fakta mot källkoden
+     SessionMemory    – Spara kandidaten om den är bäst-hittills
+     (avsluta om både review godkänd och fakta rena)
+3. OutputAgent – Skriver bästa kandidaten till .md-filen
+4. Skriv eval-rapport (JSON) och, om --verbose, agent-loggen
 ```
 
 ## Felhantering
 
-Systemet hanterar tre fellägen:
+- **Kvalitetsfel** – ReviewerAgent underkänner och skickar tillbaka feedback.
+- **Faktafel** – FactCheckerAgent avkänner och lägger till felen i feedback-kanalen.
+- **Max cykler eller max retries nått** – OutputAgent faller tillbaka till bästa fact-clean-kandidat. Finns ingen sådan används bästa poäng även om faktafel kvarstår.
+- **Ollama otillgänglig** – `tools/ollama_tools.py` ger ett tydligt felmeddelande och avbryter körningen.
 
-- **Kvalitetsfel** – ReviewerAgent underkänner och skickar tillbaka med feedback
-- **Faktafel** – FactCheckerAgent avkänner och skickar tillbaka med specificerade fel
-- **Max försök nått** – Element force-godkänns för att undvika att systemet fastnar; OutputAgent hanterar element utan dokumentation med fallback-text
+## Utdata
+
+Varje körning producerar tre filer i `output_dir`:
+
+- `<stem>_docs_<timestamp>.md` – den genererade dokumentationen
+- `<stem>_eval_<timestamp>.json` – körningsmetrik (cykler, runtime, slutpoäng)
+- `<stem>_verbose_<timestamp>.txt` – komplett agent-logg (bara med `--verbose`)
