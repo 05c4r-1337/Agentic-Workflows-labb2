@@ -36,8 +36,13 @@ def _build_system_prompt(language: str) -> str:
         "  2. Document each class, method, and interface you find in the source.\n"
         "  3. Use a Markdown pipe table for parameters (columns: Parameter, Type, Description).\n"
         "  4. Use a Markdown pipe table for return value (columns: Type, Description).\n"
-        "  5. Include code examples in " + f"```{fence}``` " + "blocks where useful.\n"
-        "  6. No preamble, no closing remarks, no meta-commentary.\n\n"
+        "  5. For every public class and public method, include a realistic code example in "
+        f"```{fence}```"
+        " that shows: (a) how to instantiate or call it with real argument values, "
+        "(b) what the return value or output looks like. "
+        "Private helpers only need an example if their input/output transformation is non-obvious.\n"
+        "  6. For any class registered via dependency injection, include a DI registration example.\n"
+        "  7. No preamble, no closing remarks, no meta-commentary.\n\n"
         f"{_ABSTRACTION_ANCHORS}\n\n"
         "Write in English"
     )
@@ -49,12 +54,17 @@ def _build_prompt(source_code: str, language: str, feedback: str = "", existing_
     revision_section = ""
     if feedback:
         revision_section = (
-            f"\n\nYour previous documentation was reviewed. This was the document"
+            f"\n\nYour previous documentation was reviewed. This was the document:\n"
             f'"""{existing_doc}"""\n\n'
             "Specific issues to fix:\n"
             f'"""{feedback}"""\n\n'
-            "Rewrite the MARKDOWN DOCUMENTATION for the C# source file above to fix only these issues. "
-            "DO NOT CHANGE ANYTHING THAT ISNT STATED IN THE FEEDBACK. Do not write code, analysis, or commentary."
+            "CRITICAL: Your rewrite MUST document only the source code provided above. "
+            "Do NOT invent class names, method names, types, or interfaces that are not present in the source. "
+            "Rewrite the MARKDOWN DOCUMENTATION to fix only the listed issues. "
+            "Exception: if adding a code example for one member, you may also add examples for "
+            "other members of the same class that currently lack them. "
+            "DO NOT CHANGE prose or tables that are not mentioned in the feedback. "
+            "Do not write code, analysis, or commentary."
         )
 
     return (
@@ -79,7 +89,12 @@ class DocWriterAgent(BaseAgent):
         documentation = call_ollama(
             prompt, system=system,
             model=DOC_WRITER_MODEL,
-            options={"temperature": DOC_WRITER_TEMPERATURE}
+            options={
+                "temperature": DOC_WRITER_TEMPERATURE,
+                "repeat_penalty": 1.15,
+                "num_ctx": 16384,
+                "num_predict": 4096,
+            },
         )
         self.memory.file_documentation = documentation
         self.log(f"Done. ({len(documentation)} chars)")

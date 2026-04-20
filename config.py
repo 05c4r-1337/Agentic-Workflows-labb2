@@ -16,7 +16,7 @@ FORMATTER_MODEL = "llama3.1:8b"
 MAX_RETRIES = 6
 
 # Minimum review score (1-10) required to approve a doc entry
-APPROVAL_THRESHOLD = 8
+APPROVAL_THRESHOLD = 7
 
 # Maximum write/review cycles before the orchestrator force-approves remaining entries
 MAX_CYCLES = 10
@@ -28,7 +28,6 @@ ABSTRACTION = 1
 DOC_WRITER_TEMPERATURE = 0.6
 REVIEWER_TEMPERATURE = 0.01
 FACT_CHECKER_TEMPERATURE = 0.0
-SUMMARY_TEMPERATURE = 0.4
 SUMMARY_TEMPERATURE = 0.4
 FORMATTER_TEMPERATURE = 0.0
 

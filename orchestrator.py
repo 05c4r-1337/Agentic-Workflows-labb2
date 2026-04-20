@@ -96,7 +96,8 @@ class Orchestrator:
 
                 doc_writer.run()
                 approved = reviewer.run()
-                fact_rejected = fact_checker.run() if approved else False
+                fact_rejected = fact_checker.run()
+                self.memory.record_candidate(fact_check_clean=not fact_rejected)
 
                 if approved and not fact_rejected:
                     self.memory.log("Orchestrator", "Documentation approved!")

@@ -25,6 +25,10 @@ class SessionMemory:
     file_fact_check_issues: Optional[str] = None
     fact_check_retries: int = 0
     file_review_formatted: Optional[str] = None
+    # Best-so-far tracking. Fact-clean beats not-clean; within a tier, highest score wins.
+    best_documentation: Optional[str] = None
+    best_score: int = 0
+    best_fact_clean: bool = False
     # Summary
     file_summary: Optional[str] = None
 
@@ -55,8 +59,18 @@ class SessionMemory:
         retries = f", retries: {self.fact_check_retries}" if self.fact_check_retries else ""
         return f"Documentation {status}{score}{retries}"
 
-    def reset_for_retry(self):
-        """Clear documentation state before a rewrite cycle."""
-        self.file_documentation = None
-        self.file_approved = False
-        self.file_review_score = None
+    def record_candidate(self, fact_check_clean: bool):
+        """Keep the best doc seen so far. Prefer fact-clean; fall back to best by score."""
+        if not self.file_documentation:
+            return
+        score = self.file_review_score or 0
+        # Fact-clean always beats not-clean, regardless of score.
+        if fact_check_clean and not self.best_fact_clean:
+            self.best_documentation = self.file_documentation
+            self.best_score = score
+            self.best_fact_clean = True
+            return
+        # Within the same tier, prefer higher score.
+        if fact_check_clean == self.best_fact_clean and score > self.best_score:
+            self.best_documentation = self.file_documentation
+            self.best_score = score

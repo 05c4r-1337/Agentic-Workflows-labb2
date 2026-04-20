@@ -8,7 +8,7 @@ with the issues stored in review_feedback so the writer can address them.
 
 from agents.base_agent import BaseAgent
 from tools.ollama_tools import call_ollama
-from config import FACT_CHECKER_MODEL, FACT_CHECKER_TEMPERATURE
+from config import FACT_CHECKER_MODEL, FACT_CHECKER_TEMPERATURE, MAX_RETRIES
 
 _LANGUAGE_LABELS = {"python": "Python", "csharp": "C#"}
 _CODE_FENCES = {"python": "python", "csharp": "csharp"}
@@ -55,9 +55,9 @@ class FactCheckerAgent(BaseAgent):
     def __init__(self, memory):
         super().__init__("FactCheckerAgent", memory)
     def run(self) -> bool:
-        if not self.memory.file_documentation or not self.memory.file_approved:
+        if not self.memory.file_documentation:
             return False
-        if getattr(self.memory, 'fact_check_retries', 0) >= 5:
+        if getattr(self.memory, 'fact_check_retries', 0) >= MAX_RETRIES:
             self.log("Fact-check retry limit reached, skipping.")
             return False
 
@@ -76,7 +76,7 @@ class FactCheckerAgent(BaseAgent):
         self.memory.file_fact_check_issues = issues
         self.memory.fact_check_retries = getattr(self.memory, 'fact_check_retries', 0) + 1
         self.memory.file_approved = False
-        existing = self.memory.file_feedback or ""
-        self.memory.file_feedback = f"{existing}\nFact-check issues:\n{issues}".strip()        
+        existing = self.memory.file_review_formatted or ""
+        self.memory.file_review_formatted = f"{existing}\nFact-check issues:\n{issues}".strip()
         self.log(f"Issues found, sent back for rewrite: {issues[:120]}...")
         return True

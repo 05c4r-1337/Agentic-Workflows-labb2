@@ -32,10 +32,13 @@ class OutputAgent(BaseAgent):
     def run(self):
         from datetime import datetime
 
-        doc = self.memory.file_documentation
+        doc = self.memory.best_documentation or self.memory.file_documentation
         if not doc:
             self.log("No documentation to write.")
             return
+        if self.memory.best_documentation and self.memory.best_documentation is not self.memory.file_documentation:
+            tier = "fact-clean" if self.memory.best_fact_clean else "best-effort"
+            self.log(f"Using best-so-far doc ({tier}, score: {self.memory.best_score}/10) instead of last cycle.")
 
         filename = Path(self.memory.target_file).name
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
