@@ -8,7 +8,7 @@ with the issues stored in review_feedback so the writer can address them.
 
 from agents.base_agent import BaseAgent
 from tools.ollama_tools import call_ollama
-from config import FACT_CHECKER_MODEL, FACT_CHECKER_TEMPERATURE, MAX_RETRIES
+from config import FACT_CHECKER_MODEL, FACT_CHECKER_TEMPERATURE, MAX_RETRIES, NUM_CTX
 
 _LANGUAGE_LABELS = {"python": "Python", "csharp": "C#"}
 _CODE_FENCES = {"python": "python", "csharp": "csharp"}
@@ -64,7 +64,7 @@ class FactCheckerAgent(BaseAgent):
         self.log("Fact-checking full file documentation...")
         prompt = _build_prompt(self.memory.source_code, self.memory.file_documentation, self.memory.language)
         response = call_ollama(prompt, system=SYSTEM_PROMPT, model=FACT_CHECKER_MODEL,
-                               options={"num_predict": 2048, "num_ctx": 16384,
+                               options={"num_predict": 4096, "num_ctx": NUM_CTX,
                                         "temperature": FACT_CHECKER_TEMPERATURE})
         issues = _parse_issues(response)
         self.log_output("Fact-check response", response)

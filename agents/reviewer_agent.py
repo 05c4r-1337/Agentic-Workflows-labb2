@@ -7,7 +7,7 @@ the entry is sent back for revision by the DocWriter.
 from agents.base_agent import BaseAgent
 from agents.format_agent import FormattingAgent
 from tools.ollama_tools import call_ollama
-from config import APPROVAL_THRESHOLD, REVIEWER_MODEL, REVIEWER_TEMPERATURE
+from config import APPROVAL_THRESHOLD, REVIEWER_MODEL, REVIEWER_TEMPERATURE, NUM_CTX
 
 _LANGUAGE_LABELS = {
     "python": "Python",
@@ -72,7 +72,11 @@ class ReviewerAgent(BaseAgent):
             prompt,
             system=_build_system_prompt(self.memory.language),
             model=REVIEWER_MODEL,
-            options={"temperature": REVIEWER_TEMPERATURE}
+            options={
+                "temperature": REVIEWER_TEMPERATURE,
+                "num_ctx": NUM_CTX,
+                "num_predict": 2048,
+            },
         )
         self.memory.file_feedback = response
         FormattingAgent(self.memory).run()

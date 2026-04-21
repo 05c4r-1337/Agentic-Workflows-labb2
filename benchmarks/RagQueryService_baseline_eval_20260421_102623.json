@@ -1,0 +1,10 @@
+{
+  "file": "sample_code/RagQueryService.cs",
+  "mode": "baseline",
+  "approved": true,
+  "force_approved": true,
+  "review_score": 4,
+  "fact_check_retries": 0,
+  "cycles_used": 1,
+  "runtime_seconds": 183.8
+}

@@ -25,6 +25,23 @@ Jämför en baseline mot full körning:
 python compare.py docs/RagQueryService_baseline_eval_*.json docs/RagQueryService_eval_*.json
 ```
 
+## Benchmark
+
+För att svara på frågan *"förbättrar den agentiska loopen faktiskt resultatet jämfört med ett enda DocWriter-pass?"* finns `benchmark.py`. Scriptet kör baseline och full N gånger vardera på samma fil och presenterar resultatet sida vid sida.
+
+```bash
+python benchmark.py sample_code/RagQueryService.cs --runs 3
+```
+
+Scriptet:
+
+- Kör baseline N gånger och sedan full N gånger (per-körning-output dämpas, bara en sammanfattningsrad per körning visas).
+- Skriver ut en jämförelsetabell med genomsnitt/std/min/max för recensionspoäng, godkännandegrad, cykler, fact-check-retries och runtime, med Δ-pilar.
+- Ger en verdict-rad i klartext (t.ex. *"Full workflow scores +4.3 higher on average"*).
+- Sparar `benchmarks/benchmark_<stem>_<timestamp>.json` (komplett per-körnings-data + aggregat) och en `.csv` för vidare analys i kalkylark.
+
+Notera: med gemma tar en full körning ~10 minuter, så `--runs 5` på båda lägena är i praktiken en timme+. Börja med `--runs 3`.
+
 Kräver att [Ollama](https://ollama.com) körs lokalt på port 11434 med modellerna som anges i `config.py`:
 
 ```bash

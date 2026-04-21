@@ -33,3 +33,8 @@ FORMATTER_TEMPERATURE = 0.0
 
 # Ollama request timeout in seconds
 OLLAMA_TIMEOUT = 600
+
+# Shared context window size. Must be consistent across all agents hitting the
+# same model — Ollama reloads model weights when num_ctx changes between calls,
+# which thrashes VRAM and causes timeouts under benchmark load.
+NUM_CTX = 16384
