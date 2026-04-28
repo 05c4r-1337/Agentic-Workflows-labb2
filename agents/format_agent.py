@@ -13,7 +13,7 @@ Output format:
 import re
 from agents.base_agent import BaseAgent
 from tools.ollama_tools import call_ollama
-from config import FORMATTER_MODEL, FORMATTER_TEMPERATURE
+from config import FORMATTER_MODEL, FORMATTER_TEMPERATURE, NUM_CTX
 
 _SYSTEM_PROMPT = (
     "You are a documentation review formatter.\n"
@@ -80,7 +80,11 @@ class FormattingAgent(BaseAgent):
             prompt,
             system=_SYSTEM_PROMPT,
             model=FORMATTER_MODEL,
-            options={"temperature": FORMATTER_TEMPERATURE}
+            options={
+                "temperature": FORMATTER_TEMPERATURE,
+                "num_ctx": NUM_CTX,
+                "num_predict": 1024,
+            },
         )
 
         issues, score = _parse_formatted(response)

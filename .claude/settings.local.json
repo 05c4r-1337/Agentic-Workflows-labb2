@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import benchmark; print\\('ok'\\)\")",
+      "Bash(python benchmark.py --help)"
+    ]
+  }
+}

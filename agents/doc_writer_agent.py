@@ -6,7 +6,7 @@ Language-aware: uses the language stored in session memory for prompts.
 
 from agents.base_agent import BaseAgent
 from tools.ollama_tools import call_ollama
-from config import ABSTRACTION, DOC_WRITER_MODEL, DOC_WRITER_TEMPERATURE
+from config import ABSTRACTION, DOC_WRITER_MODEL, DOC_WRITER_TEMPERATURE, NUM_CTX
 
 _LANGUAGE_LABELS = {
     "python": "Python",
@@ -92,7 +92,7 @@ class DocWriterAgent(BaseAgent):
             options={
                 "temperature": DOC_WRITER_TEMPERATURE,
                 "repeat_penalty": 1.15,
-                "num_ctx": 16384,
+                "num_ctx": NUM_CTX,
                 "num_predict": 4096,
             },
         )

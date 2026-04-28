@@ -1,0 +1,141 @@
+{
+  "target": "sample_code/RagQueryService.cs",
+  "runs_per_mode": 5,
+  "total_elapsed_seconds": 4726.9,
+  "baseline": {
+    "summary": {
+      "n": 5,
+      "avg_score": 2.8,
+      "std_score": 1.0954451150103321,
+      "min_score": 1,
+      "max_score": 4,
+      "approval_rate": 0.0,
+      "force_rate": 1.0,
+      "avg_cycles": 1,
+      "avg_retries": 0,
+      "avg_runtime": 166.98,
+      "total_runtime": 834.9
+    },
+    "runs": [
+      {
+        "file": "sample_code/RagQueryService.cs",
+        "mode": "baseline",
+        "approved": true,
+        "force_approved": true,
+        "review_score": 3,
+        "fact_check_retries": 0,
+        "cycles_used": 1,
+        "runtime_seconds": 165.3
+      },
+      {
+        "file": "sample_code/RagQueryService.cs",
+        "mode": "baseline",
+        "approved": true,
+        "force_approved": true,
+        "review_score": 3,
+        "fact_check_retries": 0,
+        "cycles_used": 1,
+        "runtime_seconds": 169.5
+      },
+      {
+        "file": "sample_code/RagQueryService.cs",
+        "mode": "baseline",
+        "approved": true,
+        "force_approved": true,
+        "review_score": 4,
+        "fact_check_retries": 0,
+        "cycles_used": 1,
+        "runtime_seconds": 152.1
+      },
+      {
+        "file": "sample_code/RagQueryService.cs",
+        "mode": "baseline",
+        "approved": true,
+        "force_approved": true,
+        "review_score": 1,
+        "fact_check_retries": 0,
+        "cycles_used": 1,
+        "runtime_seconds": 195.7
+      },
+      {
+        "file": "sample_code/RagQueryService.cs",
+        "mode": "baseline",
+        "approved": true,
+        "force_approved": true,
+        "review_score": 3,
+        "fact_check_retries": 0,
+        "cycles_used": 1,
+        "runtime_seconds": 152.3
+      }
+    ],
+    "failures": []
+  },
+  "full": {
+    "summary": {
+      "n": 5,
+      "avg_score": 9,
+      "std_score": 1.224744871391589,
+      "min_score": 7,
+      "max_score": 10,
+      "approval_rate": 1.0,
+      "force_rate": 0.0,
+      "avg_cycles": 3.4,
+      "avg_retries": 1.8,
+      "avg_runtime": 778.38,
+      "total_runtime": 3891.9
+    },
+    "runs": [
+      {
+        "file": "sample_code/RagQueryService.cs",
+        "mode": "full",
+        "approved": true,
+        "force_approved": false,
+        "review_score": 7,
+        "fact_check_retries": 1,
+        "cycles_used": 2,
+        "runtime_seconds": 473.7
+      },
+      {
+        "file": "sample_code/RagQueryService.cs",
+        "mode": "full",
+        "approved": true,
+        "force_approved": false,
+        "review_score": 9,
+        "fact_check_retries": 1,
+        "cycles_used": 2,
+        "runtime_seconds": 407.6
+      },
+      {
+        "file": "sample_code/RagQueryService.cs",
+        "mode": "full",
+        "approved": true,
+        "force_approved": false,
+        "review_score": 10,
+        "fact_check_retries": 1,
+        "cycles_used": 5,
+        "runtime_seconds": 1261.7
+      },
+      {
+        "file": "sample_code/RagQueryService.cs",
+        "mode": "full",
+        "approved": true,
+        "force_approved": false,
+        "review_score": 10,
+        "fact_check_retries": 0,
+        "cycles_used": 2,
+        "runtime_seconds": 442.9
+      },
+      {
+        "file": "sample_code/RagQueryService.cs",
+        "mode": "full",
+        "approved": true,
+        "force_approved": false,
+        "review_score": 9,
+        "fact_check_retries": 6,
+        "cycles_used": 6,
+        "runtime_seconds": 1306.0
+      }
+    ],
+    "failures": []
+  }
+}

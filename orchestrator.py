@@ -134,3 +134,4 @@ class Orchestrator:
             print(f"Log:    {self.memory.verbose_log_path}")
         print(f"Summary: {self.memory.summary()}")
         print_report(report)
+        return report
